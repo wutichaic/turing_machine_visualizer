@@ -1,0 +1,1307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Turing Machines Visualizer: write Turing machines as code and see the state diagram and tape simulation live.">
+<style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Turing Machines Visualizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,500&family=Instrument+Serif&display=swap">
+<!--
+  EXAMPLES
+  Each <script type="text/x-turing"> block below is one entry in the Example menu.
+  - data-label is the name shown in the menu.
+  - The text inside is ordinary machine code, exactly as you would type it in the editor.
+  - The first block is what opens when someone visits the page for the first time.
+  To add an example, copy a block, change the label and the code. To remove one, delete its block.
+-->
+<script type="text/x-turing" data-label="Zeros before ones">
+
+name "Example"
+start q0
+accept q3
+input "010011"
+
+q0, Z0 -> q0, Z0, R      // step off the left-end marker
+q0, 0 -> q1, x, R        // mark a 0
+q0, y -> q0, R           // no 0s left: check only y's remain
+q0, # -> q3, R           // empty string
+
+q1, {0, y} -> q1, R
+q1, 1 -> q2, y, L        // mark the matching 1
+
+q2, {0, y} -> q2, L
+q2, x -> q0, R
+
+// any missing transition rejects
+</script>
+
+
+
+<style>
+:root{
+  --bg:#E9EDF1; --panel:#FFFFFF; --panel-2:#F4F6F9; --canvas:#FAFBFC;
+  --ink:#16202B; --ink-2:#465363; --muted:#7A8696; --line:#D3DAE2;
+  --accent:#0D6B67; --accent-soft:#D6ECEA; --on-accent:#FFFFFF;
+  --head:#C2410C; --head-soft:#FCE6D5;
+  --ok:#157F3B; --ok-soft:#DDF3E4; --bad:#B42318; --bad-soft:#FBE3E0; --warn:#9A5B06; --warn-soft:#FBEFD9;
+  --grid:rgba(22,32,43,.09);
+  --h-k:#7A3E9D; --h-q:#0D6B67; --h-y:#16202B; --h-m:#C2410C; --h-s:#2F6B1E; --h-c:#8A95A4; --h-p:#8A95A4;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0E1217; --panel:#151A21; --panel-2:#1A2029; --canvas:#11161C;
+    --ink:#E3E8EE; --ink-2:#A9B3BF; --muted:#76818F; --line:#29323D;
+    --accent:#3EC1B6; --accent-soft:#14393A; --on-accent:#06201F;
+    --head:#F2894A; --head-soft:#3B2517;
+    --ok:#56D98A; --ok-soft:#133221; --bad:#F7847A; --bad-soft:#3A1916; --warn:#F3BE55; --warn-soft:#352812;
+    --grid:rgba(227,232,238,.07);
+    --h-k:#C99BEA; --h-q:#3EC1B6; --h-y:#E3E8EE; --h-m:#F2894A; --h-s:#9BD67F; --h-c:#6B7684; --h-p:#6B7684;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0E1217; --panel:#151A21; --panel-2:#1A2029; --canvas:#11161C;
+  --ink:#E3E8EE; --ink-2:#A9B3BF; --muted:#76818F; --line:#29323D;
+  --accent:#3EC1B6; --accent-soft:#14393A; --on-accent:#06201F;
+  --head:#F2894A; --head-soft:#3B2517;
+  --ok:#56D98A; --ok-soft:#133221; --bad:#F7847A; --bad-soft:#3A1916; --warn:#F3BE55; --warn-soft:#352812;
+  --grid:rgba(227,232,238,.07);
+  --h-k:#C99BEA; --h-q:#3EC1B6; --h-y:#E3E8EE; --h-m:#F2894A; --h-s:#9BD67F; --h-c:#6B7684; --h-p:#6B7684;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
+.app{display:grid;grid-template-rows:auto 1fr;height:100%;padding-inline:16px;padding-block:0 16px;gap:12px;box-sizing:border-box}
+header.top{display:flex;align-items:center;gap:12px 18px;flex-wrap:wrap;padding-block:12px 0}
+.brand{font-family:"Instrument Serif",Georgia,serif;font-size:30px;line-height:1;letter-spacing:.01em;display:flex;align-items:baseline;gap:10px;margin:0;font-weight:400}
+.brand small{font:500 11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.spacer{flex:1}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn,select.btn{font:500 13px "IBM Plex Sans",system-ui,sans-serif;padding:6px 11px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;cursor:pointer;line-height:1.3}
+.btn:hover{border-color:var(--ink-2)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.ghost{background:transparent}
+.btn:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,.chip:focus-visible,.tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+label.tog{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-2);cursor:pointer}
+main{display:grid;grid-template-columns:minmax(300px,5fr) 7fr;gap:12px;min-height:0}
+.pane{background:var(--panel);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.pane-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--panel-2)}
+.pane-h h2{font:600 12px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.07em;text-transform:uppercase;margin:0;color:var(--ink-2)}
+.right{display:grid;grid-template-rows:minmax(240px,1fr) auto;gap:12px;min-height:0}
+
+/* editor */
+.editor{flex:1;display:grid;grid-template-columns:auto 1fr;min-height:0;background:var(--panel)}
+.gutter{font:13px/20px "IBM Plex Mono",ui-monospace,monospace;padding:12px 8px 40px 10px;color:var(--muted);text-align:right;user-select:none;overflow:hidden;background:var(--panel-2);border-right:1px solid var(--line);min-width:2.2em}
+.gutter div{position:relative}
+.gutter .err{color:var(--bad);font-weight:600}
+.gutter .err::before{content:"";position:absolute;left:-6px;top:6px;width:6px;height:6px;border-radius:50%;background:var(--bad)}
+.gutter .wrn{color:var(--warn)}
+.codebox{position:relative;min-width:0;min-height:0}
+.codebox pre,.codebox textarea{position:absolute;inset:0;margin:0;padding:12px 14px 40px;font:13px/20px "IBM Plex Mono",ui-monospace,Menlo,monospace;white-space:pre;tab-size:2;border:0;box-sizing:border-box;letter-spacing:0}
+.codebox pre{pointer-events:none;color:var(--ink);overflow:hidden}
+.codebox textarea{background:transparent;color:transparent;caret-color:var(--ink);resize:none;outline:none;overflow:auto;width:100%;height:100%}
+.codebox textarea::selection{background:var(--accent-soft);color:transparent}
+.codebox pre .hotline{background:var(--head-soft);border-radius:2px}
+.h-k{color:var(--h-k);font-weight:600}.h-q{color:var(--h-q);font-weight:500}.h-y{color:var(--h-y)}.h-m{color:var(--h-m);font-weight:600}.h-s{color:var(--h-s)}.h-c{color:var(--h-c);font-style:italic}.h-p,.h-a{color:var(--h-p)}.h-a{font-weight:600}.h-w{color:var(--h-k)}.h-n{color:var(--h-m)}
+.dock{border-top:1px solid var(--line);display:flex;flex-direction:column;height:210px;min-height:0}
+.tabs{display:flex;gap:2px;padding:0 8px;background:var(--panel-2);border-bottom:1px solid var(--line)}
+.tab{font:500 12px "IBM Plex Sans",system-ui,sans-serif;padding:7px 10px;border:0;background:transparent;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tab .count{font-family:"IBM Plex Mono",monospace;font-size:11px;margin-left:4px;padding:0 5px;border-radius:8px;background:var(--line);color:var(--ink-2)}
+.tab .count.bad{background:var(--bad-soft);color:var(--bad)}
+.dock-body{flex:1;overflow:auto;padding:8px 12px;min-height:0}
+.diags{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.diags li{display:grid;grid-template-columns:auto auto 1fr;gap:8px;align-items:baseline;font-size:13px;padding:4px 6px;border-radius:5px;cursor:pointer}
+.diags li:hover{background:var(--panel-2)}
+.sev{font:600 10px "IBM Plex Mono",monospace;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:4px}
+.sev.error{background:var(--bad-soft);color:var(--bad)}.sev.warn{background:var(--warn-soft);color:var(--warn)}.sev.info{background:var(--accent-soft);color:var(--accent)}
+.ln{font:12px "IBM Plex Mono",monospace;color:var(--muted)}
+.ok-msg{color:var(--ok);font-size:13px;padding:4px 6px}
+.guide{font-size:13px;color:var(--ink-2);max-width:64ch}
+.guide h3{font:600 12px "IBM Plex Mono",monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);margin:12px 0 4px}
+.guide h3:first-child{margin-top:2px}
+.guide p{margin:4px 0}
+.guide code,.guide pre{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12.5px;color:var(--ink)}
+.guide pre{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin:4px 0;overflow-x:auto}
+.guide table{border-collapse:collapse;font-size:12.5px}
+.guide td{padding:2px 12px 2px 0;vertical-align:top}
+.guide td:first-child{font-family:"IBM Plex Mono",monospace;color:var(--ink);white-space:nowrap}
+
+/* diagram */
+.dia-wrap{flex:1;min-height:0;position:relative;background-color:var(--canvas);background-image:radial-gradient(var(--grid) 1px,transparent 1.2px);background-size:22px 22px}
+#dia{width:100%;height:100%;display:block;touch-action:none}
+.badge{font:500 11px "IBM Plex Mono",monospace;padding:2px 7px;border-radius:4px;border:1px solid var(--line);color:var(--ink-2);background:var(--panel)}
+.badge.nd{border-color:var(--h-k);color:var(--h-k)}
+.mname{font-weight:600;font-size:14px;color:var(--ink)}
+.node{cursor:grab}
+.node circle{fill:var(--panel);stroke:var(--ink-2);stroke-width:1.5}
+.node.active circle{stroke:var(--accent);fill:var(--accent-soft)}
+.node.cur circle{stroke:var(--head);stroke-width:2.4;fill:var(--head-soft)}
+.node text{fill:var(--ink);font:italic 500 15px "IBM Plex Sans",system-ui,sans-serif;pointer-events:none}
+.node text .sub{font-size:10.5px;font-style:normal}
+.node.dragging{cursor:grabbing}
+.edge path{fill:none;stroke:var(--ink-2);stroke-width:1.4}
+.edge.hot path{stroke:var(--head);stroke-width:2.3}
+.startarrow{stroke:var(--ink-2);stroke-width:1.4}
+.mk{fill:var(--ink-2)}.mk.hot{fill:var(--head)}
+.el{font:13.5px "IBM Plex Sans",Helvetica,Arial,sans-serif;fill:var(--ink-2);cursor:pointer}
+.elh{font:13.5px "IBM Plex Sans",Helvetica,Arial,sans-serif;fill:var(--canvas);stroke:var(--canvas);stroke-width:5px;stroke-linejoin:round;pointer-events:none}
+.elh .hot{font-weight:600}
+.el:hover{fill:var(--accent)}
+.el .hot{fill:var(--head);font-weight:600}
+.empty-dia{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:13px;pointer-events:none}
+
+/* simulator */
+.sim{padding:12px 14px;display:flex;flex-direction:column;gap:12px;overflow:auto;max-height:48vh}
+.sim input[type=text]{font:500 14px "IBM Plex Mono",ui-monospace,monospace;padding:6px 9px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);width:14ch;min-width:0}
+.sim .lbl{font:600 11px "IBM Plex Mono",monospace;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+input[type=range]{accent-color:var(--accent);width:90px}
+.pill{font:600 11px "IBM Plex Mono",monospace;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2);white-space:nowrap}
+.pill.run{color:var(--accent);border-color:var(--accent)}
+.pill.acc{color:var(--ok);border-color:var(--ok);background:var(--ok-soft)}
+.pill.rej{color:var(--bad);border-color:var(--bad);background:var(--bad-soft)}
+.pill.lim{color:var(--warn);border-color:var(--warn);background:var(--warn-soft)}
+.stepno{font:500 12px "IBM Plex Mono",monospace;color:var(--muted);font-variant-numeric:tabular-nums}
+.why{font-size:13px;color:var(--ink-2)}
+.tapes{display:flex;flex-direction:column;gap:6px}
+.tape-row{display:grid;grid-template-columns:3.2em 1fr;align-items:center;gap:8px}
+.tape{display:flex;overflow-x:auto;padding:14px 4px 18px;scrollbar-width:thin}
+.cell{flex:0 0 34px;height:38px;border:1px solid var(--line);margin-left:-1px;display:grid;place-items:center;font:500 16px "IBM Plex Mono",ui-monospace,monospace;background:var(--panel);position:relative;box-sizing:border-box}
+.cell.blank{color:var(--muted);font-weight:400}
+.cell.edge{border-left:3px solid var(--ink-2)}
+.cell.z0{color:var(--accent)}
+.el .zs,.elh .zs{font-size:9px}
+.cell.wrote{box-shadow:inset 0 -3px 0 var(--accent)}
+.cell.head{background:var(--head-soft);border-color:var(--head);z-index:1}
+.cell.head::before{content:"";position:absolute;top:-13px;left:50%;margin-left:-6px;border:6px solid transparent;border-top-color:var(--head)}
+.cell .ix{position:absolute;bottom:-16px;font-size:10px;color:var(--muted);font-weight:400}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.split.one{grid-template-columns:1fr}
+.chips{display:flex;flex-wrap:wrap;gap:6px;max-height:130px;overflow:auto;padding:2px}
+.chip{font:12.5px "IBM Plex Mono",monospace;padding:3px 8px;border-radius:5px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.chip.acc{border-color:var(--ok);background:var(--ok-soft)}
+.chip.rej{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--bad)}
+.chip.sel{border-color:var(--head);box-shadow:0 0 0 1px var(--head)}
+.hist{list-style:none;margin:0;padding:0;max-height:130px;overflow:auto;font:12.5px/1.7 "IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+.hist li{display:grid;grid-template-columns:3.5em 1fr auto;gap:8px;padding:0 4px;border-radius:4px}
+.hist li:last-child{background:var(--head-soft)}
+.hist .n{color:var(--muted);text-align:right}
+.hist .via{color:var(--muted);font-size:11px}
+.cs .st{color:var(--accent);font-weight:600;padding:0 1px}
+.cs u{text-decoration-color:var(--head);text-decoration-thickness:2px;text-underline-offset:3px}
+.cs i{color:var(--muted);font-style:normal}
+sub{font-size:.72em}
+
+/* overlay + toast */
+.overlay{position:fixed;inset:0;background:rgba(10,14,18,.45);display:grid;place-items:center;padding:16px;z-index:10}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:10px;width:min(760px,100%);max-height:86vh;display:flex;flex-direction:column}
+.sheet textarea{flex:1;min-height:300px;margin:0 12px 12px;font:12.5px/1.5 "IBM Plex Mono",monospace;background:var(--panel-2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:10px;resize:vertical;white-space:pre}
+.sheet p{margin:8px 12px;color:var(--ink-2);font-size:13px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--panel);padding:8px 14px;border-radius:8px;font-size:13px;display:flex;gap:12px;align-items:center;z-index:20}
+.toast button{background:none;border:0;color:var(--accent-soft);font:600 13px "IBM Plex Sans",sans-serif;cursor:pointer;text-decoration:underline}
+
+@media (max-width:900px){
+  html,body{height:auto}
+  .app{height:auto}
+  main{grid-template-columns:1fr}
+  .right{grid-template-rows:auto auto}
+  .editor{height:360px;flex:none}
+  .dia-wrap{height:420px;flex:none}
+  .sim{max-height:none}
+  .split{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+
+<div class="app">
+  <header class="top">
+    <h1 class="brand">Turing Machines Visualizer <small>Theory of Computation</small></h1>
+    <div class="spacer"></div>
+    <div class="row">
+      <label for="ex" class="lbl" style="font-size:12px;color:var(--muted)">Example</label>
+      <select id="ex" class="btn"></select>
+      <button class="btn" id="bPng" type="button">Download image</button>
+      <button class="btn" id="bSvg" type="button">Export SVG</button>
+      <button class="btn" id="bTikz" type="button">Export TikZ</button>
+      <button class="btn" id="bExBlock" type="button" title="Turn the current machine into an entry for the Example menu">Save as example</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="pane" aria-label="Machine source">
+      <div class="pane-h"><h2>Source</h2><span class="spacer"></span><span class="mono" style="font-size:11px;color:var(--muted)">edits update the diagram live</span></div>
+      <div class="editor">
+        <div class="gutter" id="gutter" aria-hidden="true"></div>
+        <div class="codebox">
+          <pre id="hl" aria-hidden="true"></pre>
+          <textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Turing machine source code"></textarea>
+        </div>
+      </div>
+      <div class="dock">
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" id="tabP" aria-selected="true" type="button">Problems<span class="count" id="pcount">0</span></button>
+          <button class="tab" role="tab" id="tabG" aria-selected="false" type="button">Syntax guide</button>
+        </div>
+        <div class="dock-body" id="dockP"><ul class="diags" id="diags"></ul></div>
+        <div class="dock-body" id="dockG" hidden>
+          <div class="guide">
+            <h3>Transitions</h3>
+            <p>One transition per line. Read it as “in state, reading symbol → go to state, write, move”.</p>
+<pre>q0, 0 -> q1, x, R     // write x, move right
+q1, {0,y} -> q1, R    // set of symbols; omit write to keep the symbol
+q2, * -> q2, L        // * reads any symbol
+q3, # -> qa, S        // # is the blank; S means stay
+q0, Z -> q0, Z, R     // Z is the left end of a one-way tape</pre>
+            <h3>Diagram labels</h3>
+            <p>Edges are labelled <code>read/write,move</code>, for example <code>0/x,R</code>. The written symbol is always shown, so <code>q1, {0,y} -> q1, R</code> is drawn as <code>0/0,R</code> and <code>y/y,R</code>.</p>
+            <h3>Multi-tape</h3>
+            <p>Use brackets with one entry per tape for reads and moves. Tape 1 is the <b>read-only input tape</b>: its head moves only R or S, and its write is left out, so the write list covers tapes 2, 3, … only. <code>*</code> in a write keeps what was read. On a one-way tape every tape starts with Z in cell 0.</p>
+<pre>tapes 2
+init, [Z, Z] -> push, [Z], [R, R]
+push, [a, #] -> push, [a], [R, R]    // writes a on tape 2
+pop, [b, a] -> pop, [R, L]           // omit writes to keep symbols</pre>
+            <p>Diagram labels read <code>(a,#)/a,(R,R)</code>: the symbols read on every tape, the symbols written on the work tapes, then the moves.</p>
+            <h3>Nondeterminism</h3>
+            <p>Give a state more than one transition on the same symbol. The simulator explores every branch and accepts if any branch accepts. Add <code>mode deterministic</code> to have overlaps reported as errors instead.</p>
+            <h3>Directives</h3>
+            <table>
+              <tr><td>name "…"</td><td>Title shown on the diagram</td></tr>
+              <tr><td>start q0</td><td>Start state (required)</td></tr>
+              <tr><td>accept qa qb</td><td>Accepting states</td></tr>
+              <tr><td>reject qr</td><td>Rejecting states. A missing transition also rejects.</td></tr>
+              <tr><td>tapes 2</td><td>Number of tapes (inferred from brackets if omitted)</td></tr>
+              <tr><td>blank #</td><td>Blank symbol. Default is #; change it only if you need # as an ordinary symbol.</td></tr>
+              <tr><td>input "0011"</td><td>Default input, written on tape 1</td></tr>
+              <tr><td>tape oneway</td><td>Default. One-way tape: cell 0 holds the left-end marker <code>Z</code>, the input starts in cell 1, and the machine starts with its head on Z. Z must be written back as Z, and moving L from Z rejects.</td></tr>
+              <tr><td>tape infinite</td><td>Two-way infinite tape with no end marker; the head starts on the first input symbol.</td></tr>
+              <tr><td>mode nondeterministic</td><td>or <code>deterministic</code>; inferred if omitted</td></tr>
+              <tr><td>layout q0 0 120</td><td>Pin a state's position. Drag states, then use “Save positions”.</td></tr>
+            </table>
+            <h3>Comments</h3>
+            <p><code>//</code> starts a comment, so <code>#</code> can be used freely as the blank.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="right">
+      <section class="pane" aria-label="State diagram">
+        <div class="pane-h">
+          <span class="mname" id="mname">Untitled machine</span>
+          <span class="badge" id="bTapes">1 tape</span>
+          <span class="badge" id="bMode">deterministic</span>
+          <span class="badge" id="bTape">one-way tape</span>
+          <span class="spacer"></span>
+          <label class="tog"><input type="checkbox" id="hideRej"> Hide reject</label>
+          <button class="btn ghost" id="bSavePos" type="button" disabled>Save positions</button>
+          <button class="btn ghost" id="bAuto" type="button">Auto layout</button>
+        </div>
+        <div class="dia-wrap">
+          <svg id="dia" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="State diagram"></svg>
+          <div class="empty-dia" id="emptyDia" hidden>Write a transition to see the diagram.</div>
+        </div>
+      </section>
+
+      <section class="pane" aria-label="Simulator">
+        <div class="sim">
+          <div class="row">
+            <label class="lbl" for="inp">Input</label>
+            <input type="text" id="inp" spellcheck="false" autocomplete="off">
+            <button class="btn" id="bLoad" type="button">Load</button>
+            <span style="width:6px"></span>
+            <button class="btn" id="bReset" type="button" title="Back to step 0">Reset</button>
+            <button class="btn" id="bBack" type="button">◀ Back</button>
+            <button class="btn" id="bStep" type="button">Step ▶</button>
+            <button class="btn primary" id="bRun" type="button">Run</button>
+            <label class="lbl" for="speed">Speed</label>
+            <input type="range" id="speed" min="1" max="8" value="5">
+            <span class="spacer"></span>
+            <span class="stepno" id="stepno">step 0</span>
+            <span class="pill" id="status">ready</span>
+          </div>
+          <div class="why" id="why"></div>
+          <div class="tapes" id="tapes"></div>
+          <div class="split" id="split">
+            <div id="branchBox">
+              <div class="lbl" style="margin-bottom:6px">Branches at this step <span id="bcount"></span></div>
+              <div class="chips" id="chips"></div>
+            </div>
+            <div>
+              <div class="lbl" style="margin-bottom:6px">Computation history <span style="text-transform:none;letter-spacing:0;font-weight:400">(u q v notation)</span></div>
+              <ol class="hist" id="hist"></ol>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<div class="overlay" id="ov" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ovTitle">
+    <div class="pane-h"><h2 id="ovTitle">Export</h2><span class="spacer"></span><button class="btn" id="ovDl" type="button" hidden>Download .svg</button><button class="btn primary" id="ovCopy" type="button">Copy</button><button class="btn" id="ovClose" type="button">Close</button></div>
+    <p id="ovNote"></p>
+    <div id="ovImg" hidden style="margin:0 12px 12px;overflow:auto;border:1px solid var(--line);border-radius:6px;background:#fff"></div>
+    <textarea id="ovText" readonly spellcheck="false" aria-label="Export text"></textarea>
+  </div>
+</div>
+<div class="toast" id="toast" hidden><span id="toastMsg"></span><button id="toastUndo" type="button" hidden>Undo</button></div>
+
+<script>
+(() => {
+"use strict";
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------------- examples ---------------- */
+const EXAMPLES = [...document.querySelectorAll('script[type="text/x-turing"]')].map((el, i) => ({
+  id:"ex" + i,
+  label:el.dataset.label || "Example " + (i + 1),
+  code:el.textContent.replace(/^\s*\n/, "").replace(/\s+$/, "") + "\n"
+}));
+if (!EXAMPLES.length) EXAMPLES.push({ id:"ex0", label:"Empty", code:"start q0\naccept qa\n" });
+
+/* ---------------- lexer + parser ---------------- */
+const DIRECTIVES = new Set(["name","tapes","blank","start","accept","reject","input","mode","layout","tape"]);
+const TOKEN_RE = /\/\/.*$|"[^"]*"?|->|[\[\]{},]|\s+|(?:(?!->|\/\/)[^\s\[\]{},"])+/g;
+function lex(line){
+  const out = []; let m; TOKEN_RE.lastIndex = 0;
+  while ((m = TOKEN_RE.exec(line))) {
+    const v = m[0];
+    if (!v) { TOKEN_RE.lastIndex++; continue; }
+    let type;
+    if (v.startsWith("//")) type = "comment";
+    else if (v[0] === '"') type = "string";
+    else if (v === "->") type = "arrow";
+    else if ("[]{},".includes(v)) type = "punct";
+    else if (/^\s+$/.test(v)) type = "ws";
+    else type = "word";
+    out.push({ v, type, col: m.index });
+    if (type === "word" && (v === "Z_0" || v === "Z0")) out[out.length - 1].norm = true;
+  }
+  return out;
+}
+
+function parse(src){
+  const M = { name:"", k:null, blank:"#", start:null, accept:[], reject:[], input:null, mode:null,
+              tape:"oneway", layout:{}, trans:[], states:[], diags:[], nondet:false, conflicts:[] };
+  const seen = new Set();
+  const addState = s => { if (!seen.has(s)) { seen.add(s); M.states.push(s); } };
+  const diag = (line, sev, msg) => M.diags.push({ line, sev, msg });
+  const lines = src.split("\n");
+  let startLine = 0;
+
+  lines.forEach((raw, idx) => {
+    const ln = idx + 1;
+    const toks = lex(raw).filter(t => t.type !== "ws" && t.type !== "comment").map(t => t.norm ? { ...t, v:"Z" } : t);
+    if (!toks.length) return;
+    const hasArrow = toks.some(t => t.type === "arrow");
+    if (!hasArrow) {
+      const kw = toks[0].v;
+      if (toks[0].type !== "word" || !DIRECTIVES.has(kw)) {
+        diag(ln, "error", `“${kw}” is not a directive, and the line has no “->”. A transition looks like  q0, a -> q1, b, R`);
+        return;
+      }
+      const args = toks.slice(1).filter(t => !(t.type === "punct" && t.v === ","));
+      const strs = args.map(t => t.type === "string" ? t.v.replace(/^"/, "").replace(/"$/, "") : t.v);
+      const unterminated = args.some(t => t.type === "string" && (t.v.length < 2 || !t.v.endsWith('"')));
+      if (unterminated) diag(ln, "error", "This string is missing its closing quote.");
+      const need = n => { if (strs.length < n) { diag(ln, "error", `“${kw}” needs ${n === 1 ? "a value" : n + " values"}.`); return false; } return true; };
+      switch (kw) {
+        case "name": M.name = strs.join(" "); break;
+        case "tapes": {
+          if (!need(1)) break;
+          const n = +strs[0];
+          if (!Number.isInteger(n) || n < 1 || n > 8) diag(ln, "error", "tapes must be a whole number from 1 to 8.");
+          else M.k = n;
+          break;
+        }
+        case "blank": if (need(1)) M.blank = strs[0]; break;
+        case "start":
+          if (!need(1)) break;
+          if (M.start && M.start !== strs[0]) diag(ln, "warn", `Start state was already set to ${M.start}; using ${strs[0]}.`);
+          M.start = strs[0]; startLine = ln; addState(strs[0]); break;
+        case "accept": if (need(1)) strs.forEach(s => { M.accept.push(s); addState(s); }); break;
+        case "reject": if (need(1)) strs.forEach(s => { M.reject.push(s); addState(s); }); break;
+        case "input": M.input = strs.join(""); break;
+        case "mode": {
+          if (!need(1)) break;
+          const v = strs[0].toLowerCase();
+          if (/^(det|deterministic)$/.test(v)) M.mode = "det";
+          else if (/^(nondet|nondeterministic|ntm)$/.test(v)) M.mode = "nondet";
+          else diag(ln, "error", "mode is deterministic or nondeterministic.");
+          break;
+        }
+        case "tape": {
+          if (!need(1)) break;
+          const v = strs[0].toLowerCase();
+          if (/^(infinite|two-way|twoway)$/.test(v)) M.tape = "infinite";
+          else if (/^(oneway|one-way|leftbounded|left-bounded)$/.test(v)) M.tape = "oneway";
+          else diag(ln, "error", "tape is oneway or infinite.");
+          break;
+        }
+        case "layout": {
+          if (strs.length < 3 || isNaN(+strs[1]) || isNaN(+strs[2])) { diag(ln, "error", "layout needs a state and two numbers:  layout q0 0 120"); break; }
+          M.layout[strs[0]] = { x:+strs[1], y:+strs[2] };
+          break;
+        }
+      }
+      return;
+    }
+    try { parseTransition(toks, ln); }
+    catch (e) { diag(ln, "error", typeof e === "string" ? e : "Could not read this transition."); if (typeof e !== "string") console.error(e); }
+  });
+
+  function parseAtom(p){
+    const t = p.toks[p.i];
+    if (!t) throw "The line ends where a symbol was expected.";
+    if (t.v === "{") {
+      p.i++; const syms = [];
+      for (;;) {
+        const s = p.toks[p.i];
+        if (!s) throw "This { … } set is missing its closing brace.";
+        if (s.type !== "word") throw `Expected a symbol inside { … }, found “${s.v}”.`;
+        syms.push(s.v); p.i++;
+        const n = p.toks[p.i];
+        if (n && n.v === ",") { p.i++; continue; }
+        if (n && n.v === "}") { p.i++; break; }
+        throw "Separate symbols in a set with commas and close it with }.";
+      }
+      return { t:"set", syms };
+    }
+    if (t.type !== "word") throw `Expected a symbol, found “${t.v}”.`;
+    p.i++;
+    return t.v === "*" ? { t:"any" } : { t:"sym", s:t.v };
+  }
+  function parseTuple(p, atomFn){
+    const t = p.toks[p.i];
+    if (t && t.v === "[") {
+      p.i++; const items = [atomFn(p)];
+      while (p.toks[p.i] && p.toks[p.i].v === ",") { p.i++; items.push(atomFn(p)); }
+      if (!p.toks[p.i] || p.toks[p.i].v !== "]") throw "This [ … ] tuple is missing its closing bracket.";
+      p.i++;
+      return { tuple:true, items };
+    }
+    return { tuple:false, items:[atomFn(p)] };
+  }
+  function wordFn(what){ return p => {
+    const t = p.toks[p.i];
+    if (!t || t.type !== "word") throw `Expected ${what}, found “${t ? t.v : "end of line"}”.`;
+    p.i++; return t.v;
+  }; }
+  function splitTop(toks){
+    const parts = [[]]; let d = 0;
+    for (const t of toks) {
+      if (t.v === "[" || t.v === "{") d++;
+      if (t.v === "]" || t.v === "}") d--;
+      if (t.v === "," && d === 0) { parts.push([]); continue; }
+      parts[parts.length - 1].push(t);
+    }
+    return parts;
+  }
+  function parseTransition(toks, ln){
+    const ai = toks.findIndex(t => t.type === "arrow");
+    if (toks.filter(t => t.type === "arrow").length > 1) throw "Only one “->” per line.";
+    const L = toks.slice(0, ai), R = toks.slice(ai + 1);
+    if (L.length < 3 || L[0].type !== "word" || L[1].v !== ",") throw "The left side should be  state, symbol  (for example  q0, a).";
+    const p = { toks:L, i:2 };
+    const read = parseTuple(p, parseAtom);
+    if (p.i !== L.length) throw `Unexpected “${L[p.i].v}” before “->”.`;
+    if (R.length < 3 || R[0].type !== "word" || R[1].v !== ",") throw "The right side should be  state, write, move  (for example  q1, b, R).";
+    const parts = splitTop(R.slice(2));
+    if (parts.some(x => !x.length)) throw "There is an empty item between commas on the right side.";
+    if (parts.length > 2) throw read.tuple ? "The right side should be  state, [writes], [moves]." : "Too many items. Use  state, write, move  or  state, move.";
+    const kLine = read.items.length;
+    const parseItem = (toks, fn) => { const q = { toks, i:0 }; const r = parseTuple(q, fn); if (q.i !== toks.length) throw `Unexpected “${toks[q.i].v}”.`; return r; };
+    let write, move;
+    if (parts.length === 2) { write = parseItem(parts[0], wordFn("a symbol to write")); move = parseItem(parts[1], wordFn("a move (L, R or S)")); }
+    else { move = parseItem(parts[0], wordFn("a move (L, R or S)")); write = { tuple:move.tuple, items:move.items.map(() => "*") }; }
+    if (kLine > 1 && write.items.length === kLine - 1) write.items.unshift("*");
+    if (write.items.length !== kLine) throw `Read has ${kLine} ${kLine === 1 ? "entry" : "entries"} but write has ${write.items.length}.`;
+    if (move.items.length !== kLine) throw `Read has ${kLine} ${kLine === 1 ? "entry" : "entries"} but move has ${move.items.length}.`;
+    move.items.forEach(m => { if (!/^[LRS]$/.test(m)) throw `“${m}” is not a move. Use L, R or S.`; });
+    const from = L[0].v, to = R[0].v;
+    addState(from); addState(to);
+    M.trans.push({ from, to, read:read.items, write:write.items, move:move.items, ln, k:kLine, id:M.trans.length });
+  }
+
+  // tape count
+  if (M.k == null) M.k = M.trans.length ? M.trans[0].k : 1;
+  const bad = new Set();
+  M.trans.forEach(t => {
+    if (t.k !== M.k) { diag(t.ln, "error", `This transition uses ${t.k} ${t.k === 1 ? "tape" : "tapes"} but the machine has ${M.k}. ${M.k > 1 ? "Use [ … ] with one entry per tape." : "Add  tapes " + t.k + "  or remove the brackets."}`); bad.add(t); }
+  });
+  M.trans = M.trans.filter(t => !bad.has(t));
+  if (M.k > 1) M.trans.forEach(t => {
+    const w0 = t.write[0], r0 = t.read[0];
+    if (w0 !== "*" && !(r0.t === "sym" && r0.s === w0)) diag(t.ln, "error", `Tape 1 is the read-only input tape, so it cannot be written. List writes for ${M.k === 2 ? "tape 2" : "tapes 2–" + M.k} only, e.g. [${t.write.slice(1).join(", ")}].`);
+    if (t.move[0] === "L") diag(t.ln, "error", "Tape 1 is the input tape and can only move R or S.");
+    t.write[0] = "*";
+  });
+
+  if (!M.start) diag(0, "error", "Add a start state, for example  start q0");
+  if (!M.accept.length) diag(0, "warn", "No accept state declared, so no input can be accepted. Add  accept qa");
+  const acc = new Set(M.accept), rej = new Set(M.reject);
+  M.accept.forEach(s => { if (rej.has(s)) diag(0, "error", `${s} is declared both accept and reject.`); });
+  M.trans.forEach(t => {
+    if (acc.has(t.from) || rej.has(t.from)) diag(t.ln, "error", `${t.from} is a halting state, so it cannot have outgoing transitions.`);
+  });
+
+  if (M.tape === "oneway") M.trans.forEach(t => t.read.forEach((a, i) => {
+    if (a.t === "sym" && a.s === Z0 && t.write[i] !== "*" && t.write[i] !== Z0) diag(t.ln, "error", `Z marks the left end of a one-way tape and must be written back as Z (found ${t.write[i]}).`);
+  }));
+
+  // determinism
+  const overlap = (a, b) => {
+    if (a.t === "any" || b.t === "any") return true;
+    const A = a.t === "sym" ? [a.s] : a.syms, B = b.t === "sym" ? [b.s] : b.syms;
+    return A.some(x => B.includes(x));
+  };
+  const byFrom = {};
+  M.trans.forEach(t => (byFrom[t.from] ||= []).push(t));
+  for (const s in byFrom) {
+    const ts = byFrom[s];
+    for (let i = 0; i < ts.length; i++) for (let j = i + 1; j < ts.length; j++)
+      if (ts[i].read.every((a, x) => overlap(a, ts[j].read[x]))) M.conflicts.push([ts[i], ts[j]]);
+  }
+  if (M.conflicts.length) {
+    if (M.mode === "det") M.conflicts.forEach(([a, b]) => diag(b.ln, "error", `Nondeterministic: lines ${a.ln} and ${b.ln} both apply to ${s2(a.from)} on the same symbol, but mode is deterministic.`));
+    else if (M.mode == null) {
+      const [a, b] = M.conflicts[0];
+      diag(b.ln, "info", `Treating this as a nondeterministic machine: lines ${a.ln} and ${b.ln} both apply to ${s2(a.from)} on the same symbol.${M.conflicts.length > 1 ? ` (${M.conflicts.length} overlaps in total)` : ""}`);
+    }
+  }
+  M.nondet = M.mode === "nondet" || (M.mode !== "det" && M.conflicts.length > 0);
+  M.byState = byFrom;
+  M.acc = acc; M.rej = rej;
+  M.diags.sort((a, b) => a.line - b.line);
+  M.hasErrors = M.diags.some(d => d.sev === "error");
+  return M;
+  function s2(x){ return x; }
+}
+
+/* ---------------- simulator ---------------- */
+const Z0 = "Z";
+const atomMatch = (a, s) => a.t === "any" || (a.t === "sym" ? a.s === s : a.syms.includes(s));
+const tget = (tp, i, blank) => tp.cells.has(i) ? tp.cells.get(i) : blank;
+const readAll = (M, c) => c.tapes.map(tp => tget(tp, tp.head, M.blank));
+const matching = (M, c) => { const syms = readAll(M, c); return (M.byState[c.state] || []).filter(t => t.read.every((a, i) => atomMatch(a, syms[i]))); };
+let cid = 0;
+function statusOf(M, c){
+  if (M.acc.has(c.state)) return ["accept", `${c.state} is an accept state.`];
+  if (M.rej.has(c.state)) return ["reject", `${c.state} is a reject state.`];
+  if (!matching(M, c).length) {
+    const syms = readAll(M, c).map(dispSym);
+    return ["reject", `No transition from ${c.state} reading ${M.k === 1 ? syms[0] : "(" + syms.join(",") + ")"}, so this branch rejects.`];
+  }
+  return ["active", ""];
+}
+function initConfig(M, input){
+  const tapes = [];
+  for (let i = 0; i < M.k; i++) {
+    const cells = new Map();
+    const off = M.tape === "oneway" ? 1 : 0;
+    if (off) cells.set(0, Z0);
+    if (i === 0) [...input].forEach((ch, j) => { if (ch !== M.blank) cells.set(j + off, ch); });
+    tapes.push({ cells, head:0 });
+  }
+  const c = { id:cid++, state:M.start, tapes, parent:null, via:null, step:0, wrote:null };
+  [c.status, c.why] = statusOf(M, c);
+  return c;
+}
+function apply(M, c, t){
+  const wrote = []; let fell = 0;
+  const tapes = c.tapes.map((tp, i) => {
+    const cells = new Map(tp.cells);
+    const r = tget(tp, tp.head, M.blank);
+    const w = (t.write[i] === "*" || (M.k > 1 && i === 0)) ? r : t.write[i];
+    if (w === M.blank) cells.delete(tp.head); else cells.set(tp.head, w);
+    wrote.push(tp.head);
+    let h = tp.head + (t.move[i] === "L" ? -1 : t.move[i] === "R" ? 1 : 0);
+    if (M.tape === "oneway" && h < 0) { h = 0; fell = i + 1; }
+    return { cells, head:h };
+  });
+  const n = { id:cid++, state:t.to, tapes, parent:c, via:t, step:c.step + 1, wrote };
+  [n.status, n.why] = statusOf(M, n);
+  if (fell) { n.status = "reject"; n.why = `The head on tape ${fell} moved left from Z, off the end of the one-way tape, so this branch rejects.`; }
+  return n;
+}
+const GEN_CAP = 600, STEP_LIMIT = 20000;
+let sim = null;
+function resetSim(){
+  stopRun();
+  if (!M || M.hasErrors || !M.start) { sim = null; renderSim(); renderDiagram(); return; }
+  const c = initConfig(M, $("#inp").value);
+  sim = { gens:[[c]], sel:0, truncated:false };
+  renderSim(); renderDiagram();
+}
+const curGen = () => sim.gens[sim.gens.length - 1];
+function resultOf(gen){
+  if (gen.some(c => c.status === "accept")) return "accept";
+  if (!gen.some(c => c.status === "active")) return "reject";
+  return null;
+}
+function stepOnce(){
+  if (!sim) return false;
+  const gen = curGen();
+  if (resultOf(gen)) return false;
+  if (sim.gens.length > STEP_LIMIT) return false;
+  const prevSel = gen[sim.sel];
+  const next = [];
+  outer: for (const c of gen) {
+    if (c.status !== "active") continue;
+    for (const t of matching(M, c)) {
+      next.push(apply(M, c, t));
+      if (next.length >= GEN_CAP) { sim.truncated = true; break outer; }
+    }
+  }
+  sim.gens.push(next);
+  let sel = next.findIndex(c => c.status === "accept");
+  if (sel < 0) sel = next.findIndex(c => c.parent === prevSel && c.status === "active");
+  if (sel < 0) sel = next.findIndex(c => c.parent === prevSel);
+  if (sel < 0) sel = next.findIndex(c => c.status === "active");
+  sim.sel = Math.max(0, sel);
+  return !resultOf(next);
+}
+function back(){ if (sim && sim.gens.length > 1) { sim.gens.pop(); sim.sel = Math.min(sim.sel, curGen().length - 1); } }
+
+let running = false, runTimer = null;
+const DELAYS = [700, 450, 280, 160, 90, 45, 18, 16];
+function stopRun(){ running = false; clearTimeout(runTimer); runTimer = null; const b = $("#bRun"); if (b) b.textContent = "Run"; }
+function tick(){
+  const sp = +$("#speed").value, n = sp >= 8 ? 40 : sp === 7 ? 4 : 1;
+  let alive = true;
+  for (let i = 0; i < n && alive; i++) alive = stepOnce();
+  renderSim(); renderDiagram();
+  if (!alive) { stopRun(); return; }
+  if (running) runTimer = setTimeout(tick, DELAYS[sp - 1]);
+}
+
+/* ---------------- display helpers ---------------- */
+let M = null;
+const zH = h => h.replace(/Z₀/g, "Z<sub>0</sub>");
+const zS = h => h.replace(/Z₀/g, 'Z<tspan class="zs" dy="3">0</tspan><tspan dy="-3">\u200b</tspan>');
+function dispSym(s){ return s; }
+function stateHTML(s){
+  let m = s.match(/^([A-Za-z])_?(\d+|acc|rej|accept|reject|a|r)$/);
+  if (m) return `${esc(m[1])}<sub>${esc(m[2])}</sub>`;
+  return esc(s);
+}
+function cfgHTML(c){ return zH(cfgHTML0(c)); }
+function cfgHTML0(c){
+  const st = `<b class="st">${stateHTML(c.state)}</b>`;
+  const span = tp => { let lo = tp.head, hi = tp.head; for (const k of tp.cells.keys()) { if (k < lo) lo = k; if (k > hi) hi = k; } return [lo, hi]; };
+  if (c.tapes.length === 1) {
+    const tp = c.tapes[0], [lo, hi] = span(tp); let s = "";
+    for (let i = lo; i <= hi; i++) { if (i === tp.head) s += st; s += esc(dispSym(tget(tp, i, M.blank))); }
+    return s;
+  }
+  return st + " " + c.tapes.map(tp => { const [lo, hi] = span(tp); let s = ""; for (let i = lo; i <= hi; i++) { const v = esc(dispSym(tget(tp, i, M.blank))); s += i === tp.head ? `<u>${v}</u>` : v; } return s; }).join(" <i>|</i> ");
+}
+function atomStr(a, d){ return a.t === "any" ? "*" : a.t === "sym" ? d(a.s) : a.syms.map(d).join(","); }
+// Expand a transition into label items so the written symbol is always shown:
+// a set read with "keep" write becomes one item per symbol (0/0,R and y/y,R).
+function labelItems(t){
+  let items = [{ read:[], write:[] }];
+  const multi = t.read.length > 1;
+  t.read.forEach((a, i) => {
+    const w = t.write[i], next = [];
+    items.forEach(it => {
+      if (multi && i === 0) next.push({ read:[...it.read, a], write:[...it.write, "*"] }); // read-only input tape: no write shown
+      else if (w === "*" && a.t === "set") a.syms.forEach(x => next.push({ read:[...it.read, { t:"sym", s:x }], write:[...it.write, x] }));
+      else if (w === "*" && a.t === "sym") next.push({ read:[...it.read, a], write:[...it.write, a.s] });
+      else next.push({ read:[...it.read, a], write:[...it.write, w] });
+    });
+    items = next;
+  });
+  return items.map(it => ({ ...it, t }));
+}
+function itemParts(it, d){
+  const k = it.read.length, wd = w => w === "*" ? "*" : d(w);
+  const read = k === 1 ? atomStr(it.read[0], d) : "(" + it.read.map(a => atomStr(a, d)).join(",") + ")";
+  if (k === 1) return { read, rest:wd(it.write[0]) + "," + it.t.move[0] };
+  const ws = it.write.slice(1).map(wd);
+  const rest = (ws.length === 1 ? ws[0] : "(" + ws.join(",") + ")") + ",(" + it.t.move.join(",") + ")";
+  return { read, rest };
+}
+function labelLines(ts, d, sep){
+  const byRest = new Map();
+  ts.forEach(t => labelItems(t).forEach(it => {
+    const { read, rest } = itemParts(it, d);
+    if (!byRest.has(rest)) byRest.set(rest, { reads:[], items:[] });
+    const g = byRest.get(rest);
+    if (!g.reads.includes(read)) g.reads.push(read);
+    g.items.push(it);
+  }));
+  return [...byRest.entries()].map(([rest, g]) => ({ text:`${g.reads.join(",")}${sep}${rest}`, ts:[...new Set(g.items.map(i => i.t))], items:g.items }));
+}
+const lineMatches = (l, t, syms) => l.items.some(it => it.t === t && it.read.every((a, i) => atomMatch(a, syms[i])));
+
+/* ---------------- diagram ---------------- */
+let dragPos = {}, frozenVB = null, lastPos = {};
+function nodeR(s){ return Math.max(24, s.replace(/[_\d]/g, "").length * 4.2 + (s.match(/\d/g) || []).length * 3 + 14); }
+function autoLayout(states, trans){
+  const halting = new Set([...M.accept, ...M.reject]);
+  const adj = new Map(states.map(s => [s, []]));
+  trans.forEach(t => { if (adj.has(t.from) && t.from !== t.to) adj.get(t.from).push(t.to); });
+  const depth = new Map();
+  if (M.start && adj.has(M.start)) {
+    depth.set(M.start, 0); const q = [M.start];
+    while (q.length) { const s = q.shift(); for (const n of adj.get(s)) if (!depth.has(n) && !halting.has(n)) { depth.set(n, depth.get(s) + 1); q.push(n); } }
+  }
+  let maxD = 0; depth.forEach(d => maxD = Math.max(maxD, d));
+  const cols = new Map();
+  const put = (s, c) => { if (!cols.has(c)) cols.set(c, []); cols.get(c).push(s); };
+  states.filter(s => !halting.has(s)).forEach(s => put(s, depth.has(s) ? depth.get(s) : maxD + 1));
+  const hc = depth.size < states.filter(s => !halting.has(s)).length ? maxD + 2 : maxD + 1;
+  states.filter(s => halting.has(s)).forEach(s => put(s, hc));
+  const pos = {};
+  cols.forEach((arr, c) => arr.forEach((s, r) => { pos[s] = { x:c * 170, y:(r - (arr.length - 1) / 2) * 130 }; }));
+  return pos;
+}
+function segDist(p, a, b){
+  const dx = b.x - a.x, dy = b.y - a.y, L = dx * dx + dy * dy || 1;
+  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / L; t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+function geometry(){
+  const hidden = new Set(hideRej.checked ? M.reject : []);
+  const states = M.states.filter(s => !hidden.has(s));
+  const trans = M.trans.filter(t => !hidden.has(t.to) && !hidden.has(t.from));
+  const auto = autoLayout(states, trans);
+  const pos = {};
+  states.forEach(s => pos[s] = dragPos[s] || M.layout[s] || auto[s]);
+  const groups = new Map();
+  trans.forEach(t => { const key = t.from + "\u0000" + t.to; if (!groups.has(key)) groups.set(key, { from:t.from, to:t.to, ts:[] }); groups.get(key).ts.push(t); });
+  const R = {}; states.forEach(s => R[s] = nodeR(s));
+  const edges = [];
+  const obst = []; // loops and their labels, which curved edges should avoid
+  [...groups.values()].sort((a, b) => (b.from === b.to) - (a.from === a.to)).forEach(g => {
+    const A = pos[g.from], B = pos[g.to];
+    if (g.from === g.to) {
+      // loop: point away from neighbours, snapped to 4 directions
+      let cx = 0, cy = 0, n = 0;
+      trans.forEach(t => { if (t.from !== t.to && (t.from === g.from || t.to === g.from)) { const o = pos[t.from === g.from ? t.to : t.from]; cx += o.x; cy += o.y; n++; } });
+      let ang = -Math.PI / 2;
+      if (n) {
+        const a = Math.atan2(A.y - cy / n, A.x - cx / n);
+        // the start arrow enters from the left, so a start state never gets a left loop
+        const opts = g.from === M.start ? [-Math.PI / 2, Math.PI / 2, 0] : [-Math.PI / 2, Math.PI / 2, 0, Math.PI];
+        // prefer above/below unless clearly horizontal
+        let best = opts[0], bs = -Infinity;
+        opts.forEach((o, i) => { const sc = Math.cos(a - o) + (i === 0 ? 0.35 : i === 1 ? 0.2 : 0); if (sc > bs) { bs = sc; best = o; } });
+        ang = best;
+        // if neighbours are in a line horizontally, above is fine
+        if (Math.abs(A.y - cy / n) < 20) ang = -Math.PI / 2;
+      }
+      edges.push({ g, loop:true, ang });
+      const d0 = R[g.from] + 26;
+      obst.push({ s:g.from, x:A.x + Math.cos(ang) * d0, y:A.y + Math.sin(ang) * d0, r:30 });
+      return;
+    }
+    const dx = B.x - A.x, dy = B.y - A.y, len = Math.hypot(dx, dy) || 1;
+    let nx = -dy / len, ny = dx / len, flip = false;
+    const rev = groups.has(g.to + "\u0000" + g.from);
+    let off = rev ? 26 : 0;
+    if (!rev) {
+      // pick the bend (either side, growing) whose curve stays clearest of other states
+      const clearance = o => {
+        const cx = (A.x + B.x) / 2 + nx * o * 2, cy = (A.y + B.y) / 2 + ny * o * 2;
+        let best = Infinity;
+        for (let i = 1; i < 20; i++) {
+          const t = i / 20, x = (1 - t) * (1 - t) * A.x + 2 * t * (1 - t) * cx + t * t * B.x, y = (1 - t) * (1 - t) * A.y + 2 * t * (1 - t) * cy + t * t * B.y;
+          states.forEach(s => { if (s !== g.from && s !== g.to) best = Math.min(best, Math.hypot(pos[s].x - x, pos[s].y - y) - R[s]); });
+          obst.forEach(o => { if (o.s !== g.from && o.s !== g.to) best = Math.min(best, Math.hypot(o.x - x, o.y - y) - o.r); });
+        }
+        return best;
+      };
+      if (clearance(0) < 12) {
+        let bestO = 60, bestC = -Infinity;
+        for (const o of [60, -60, 95, -95, 130, -130, 170, -170]) { const c = clearance(o); if (c > bestC + 0.5) { bestC = c; bestO = o; } if (c >= 12) break; }
+        off = bestO;
+      }
+      if (off < 0) { nx = -nx; ny = -ny; off = -off; flip = true; }
+    }
+    edges.push({ g, loop:false, off, nx, ny, flip });
+  });
+  return { states, trans, pos, edges, R };
+}
+function buildSVG(opts){
+  const plain = opts && opts.plain;
+  const G = geometry();
+  const { states, pos, edges, R } = G;
+  const active = new Set(), sel = (!plain && sim) ? curGen()[sim.sel] : null;
+  if (!plain && sim) curGen().forEach(c => { if (c.status !== "reject" || curGen().length === 1) active.add(c.state); });
+  const hotT = sel && sel.via;
+  const hotRead = hotT ? readAll(M, sel.parent) : null;
+  const d = dispSym;
+  let defs = `<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path class="mk" d="M0,1 L10,5 L0,9 z"/></marker><marker id="arh" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path class="mk hot" d="M0,1 L10,5 L0,9 z"/></marker></defs>`;
+  let eHTML = "", lHTML = "", nHTML = "";
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  const grow = (x, y) => { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y); };
+  const textBlock = (lines, x, y, anchor, vdir) => {
+    // vdir: -1 stack upward from y, 1 downward, 0 centered
+    const lh = 16, n = lines.length;
+    let y0 = vdir < 0 ? y - (n - 1) * lh : vdir > 0 ? y + 11 : y - (n - 1) * lh / 2 + 4;
+    const w = Math.max(...lines.map(l => l.text.length)) * 7.6;
+    const x0 = anchor === "start" ? x : anchor === "end" ? x - w : x - w / 2;
+    grow(x0, y0 - 12); grow(x0 + w, y0 + (n - 1) * lh + 4);
+    const lns = lines.map(l => l.ts.map(t => t.ln).join(",")).join(",");
+    const spans = lines.map((l, i) => `<tspan x="${x.toFixed(1)}" dy="${i ? lh : 0}"${hotT && lineMatches(l, hotT, hotRead) ? ' class="hot"' : ""}>${zS(esc(l.text))}</tspan>`).join("");
+    // halo drawn as a separate copy underneath, so it never covers neighbouring glyphs
+    return `<text class="elh" aria-hidden="true" text-anchor="${anchor}" x="${x.toFixed(1)}" y="${y0.toFixed(1)}">${spans}</text>` +
+      `<text class="el" data-lines="${lns}" text-anchor="${anchor}" x="${x.toFixed(1)}" y="${y0.toFixed(1)}">` + spans +
+      `<title>${esc("Line " + [...new Set(lines.flatMap(l => l.ts.map(t => t.ln)))].join(", ") + " — click to jump to the source")}</title></text>`;
+  };
+  edges.forEach(e => {
+    const { g } = e;
+    const lines = labelLines(g.ts, d, "/");
+    const hot = hotT && g.ts.includes(hotT);
+    const cls = `edge${hot ? " hot" : ""}`, mk = hot ? "url(#arh)" : "url(#ar)";
+    const A = pos[g.from], r = R[g.from];
+    if (e.loop) {
+      // circular loop: a circle of radius rho whose centre sits just outside the node
+      const a = e.ang, rho = 17, dc = r + 9;
+      const ux = Math.cos(a), uy = Math.sin(a), nx = -uy, ny = ux;
+      const xi = (dc * dc + r * r - rho * rho) / (2 * dc), hi = Math.sqrt(Math.max(0, r * r - xi * xi));
+      const p1 = { x:A.x + ux * xi + nx * hi, y:A.y + uy * xi + ny * hi };
+      const p2 = { x:A.x + ux * xi - nx * hi, y:A.y + uy * xi - ny * hi };
+      const cc = { x:A.x + ux * dc, y:A.y + uy * dc };
+      eHTML += `<g class="${cls}"><path d="M${p1.x.toFixed(1)},${p1.y.toFixed(1)} A${rho},${rho} 0 1 0 ${p2.x.toFixed(1)},${p2.y.toFixed(1)}" marker-end="${mk}"/></g>`;
+      const c1 = { x:cc.x - rho, y:cc.y - rho }, c2 = { x:cc.x + rho, y:cc.y + rho };
+      const top = dc + rho + 7;
+      const lx = A.x + top * Math.cos(a), ly = A.y + top * Math.sin(a);
+      const cos = Math.cos(a), sin = Math.sin(a);
+      const anchor = Math.abs(cos) < 0.3 ? "middle" : cos > 0 ? "start" : "end";
+      lHTML += textBlock(lines, lx + (anchor === "start" ? 4 : anchor === "end" ? -4 : 0), ly + (sin < -0.5 ? -6 : 0), anchor, sin < -0.5 ? -1 : sin > 0.5 ? 1 : 0);
+      grow(c1.x, c1.y); grow(c2.x, c2.y);
+      return;
+    }
+    const B = pos[g.to], rb = R[g.to];
+    const mid = { x:(A.x + B.x) / 2 + e.nx * e.off, y:(A.y + B.y) / 2 + e.ny * e.off };
+    const ctrl = { x:(A.x + B.x) / 2 + e.nx * e.off * 2, y:(A.y + B.y) / 2 + e.ny * e.off * 2 };
+    const u = (p, q) => { const L = Math.hypot(q.x - p.x, q.y - p.y) || 1; return { x:(q.x - p.x) / L, y:(q.y - p.y) / L }; };
+    const us = u(A, e.off ? ctrl : B), ue = u(B, e.off ? ctrl : A);
+    const s = { x:A.x + us.x * r, y:A.y + us.y * r }, t = { x:B.x + ue.x * (rb + 1), y:B.y + ue.y * (rb + 1) };
+    const path = e.off ? `M${s.x.toFixed(1)},${s.y.toFixed(1)} Q${ctrl.x.toFixed(1)},${ctrl.y.toFixed(1)} ${t.x.toFixed(1)},${t.y.toFixed(1)}` : `M${s.x.toFixed(1)},${s.y.toFixed(1)} L${t.x.toFixed(1)},${t.y.toFixed(1)}`;
+    eHTML += `<g class="${cls}"><path d="${path}" marker-end="${mk}"/></g>`;
+    // label on the normal side
+    const pad = 11;
+    const lx = mid.x + e.nx * pad, ly = mid.y + e.ny * pad;
+    const anchor = Math.abs(e.nx) < 0.45 ? "middle" : e.nx > 0 ? "start" : "end";
+    const vdir = e.ny < -0.45 ? -1 : e.ny > 0.45 ? 1 : 0;
+    lHTML += textBlock(lines, lx, ly + (vdir < 0 ? -4 : 0), anchor, vdir);
+  });
+  states.forEach(s => {
+    const p = pos[s], r = R[s];
+    grow(p.x - r, p.y - r); grow(p.x + r, p.y + r);
+    const cls = ["node"];
+    if (!plain && sel && sel.state === s) cls.push("cur"); else if (active.has(s)) cls.push("active");
+    let inner = `<circle cx="${p.x}" cy="${p.y}" r="${r}"/>`;
+    if (M.acc.has(s)) inner += `<circle cx="${p.x}" cy="${p.y}" r="${r - 4.5}"/>`;
+    let label;
+    const m = s.match(/^([A-Za-z])_?(\d+|acc|rej|accept|reject|a|r)$/);
+    if (m) label = `<text x="${p.x}" y="${p.y + 5}" text-anchor="middle">${esc(m[1])}<tspan class="sub" dy="4">${esc(m[2])}</tspan></text>`;
+    else label = `<text x="${p.x}" y="${p.y + 5}" text-anchor="middle">${esc(s)}</text>`;
+    let start = "";
+    if (s === M.start) { start = `<line class="startarrow" x1="${p.x - r - 38}" y1="${p.y}" x2="${p.x - r - 1}" y2="${p.y}" marker-end="url(#ar)"/>`; grow(p.x - r - 40, p.y); }
+    nHTML += `${start}<g class="${cls.join(" ")}" data-state="${esc(s)}">${inner}${label}</g>`;
+  });
+  if (!states.length) { minX = minY = -100; maxX = maxY = 100; }
+  const padd = 24;
+  const vb = [minX - padd, minY - padd, maxX - minX + padd * 2, maxY - minY + padd * 2].map(v => +v.toFixed(1));
+  lastPos = pos;
+  return { inner:defs + eHTML + nHTML + lHTML, vb, count:states.length };
+}
+const hideRej = $("#hideRej");
+function renderDiagram(){
+  const svg = $("#dia");
+  if (!M) return;
+  const out = buildSVG();
+  const vb = frozenVB || out.vb;
+  svg.setAttribute("viewBox", vb.join(" "));
+  svg.innerHTML = out.inner;
+  $("#emptyDia").hidden = out.count > 0;
+}
+function exportSVG(){
+  const out = buildSVG({ plain:true });
+  const css = `.node circle{fill:#fff;stroke:#2b3440;stroke-width:1.5}.node text{fill:#111;font:italic 500 15px 'IBM Plex Sans',Helvetica,Arial,sans-serif}.node .sub{font-size:10.5px;font-style:normal}.edge path{fill:none;stroke:#2b3440;stroke-width:1.4}.startarrow{stroke:#2b3440;stroke-width:1.4}.mk{fill:#2b3440}.el{font:13.5px 'IBM Plex Sans',Helvetica,Arial,'Liberation Sans',sans-serif;fill:#1f2833}.elh{font:13.5px 'IBM Plex Sans',Helvetica,Arial,'Liberation Sans',sans-serif;fill:#fff;stroke:#fff;stroke-width:5px;stroke-linejoin:round}.elh .zs{font-size:9px}.el .zs{font-size:9px}`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${out.vb.join(" ")}" width="${Math.round(out.vb[2])}" height="${Math.round(out.vb[3])}"><style>${css}</style><rect x="${out.vb[0]}" y="${out.vb[1]}" width="${out.vb[2]}" height="${out.vb[3]}" fill="#fff"/>${out.inner.replace(/<title>[\s\S]*?<\/title>/g, "")}</svg>`;
+}
+function exportTikZ(){
+  const G = geometry();
+  const id = s => "s" + s.replace(/[^A-Za-z0-9]/g, "x");
+  const texSym = s => {
+    return s.replace(/[\\#$%&_{}^~]/g, c => ({ "\\":"\\backslash ", "#":"\\#", "$":"\\$", "%":"\\%", "&":"\\&", "_":"\\_", "{":"\\{", "}":"\\}", "^":"\\hat{}", "~":"\\sim " }[c]));
+  };
+  const texState = s => { const m = s.match(/^([A-Za-z])_?(\d+|acc|rej|accept|reject|a|r)$/); return m ? `$${m[1]}_{\\mathrm{${m[2]}}}$`.replace(/\\mathrm\{(\d+)\}/, "$1") : `$\\mathit{${texSym(s)}}$`; };
+  const L = [];
+  L.push("% Generated by Turing Machines Visualizer. Needs: \\usetikzlibrary{automata, arrows.meta}");
+  L.push("\\begin{tikzpicture}[->, >=Stealth, shorten >=1pt, auto, semithick,");
+  L.push("  every state/.style={minimum size=9mm, inner sep=1pt}, font=\\small]");
+  G.states.forEach(s => {
+    const p = G.pos[s], o = [];
+    if (s === M.start) o.push("initial");
+    if (M.acc.has(s)) o.push("accepting");
+    L.push(`  \\node[state${o.length ? ", " + o.join(", ") : ""}] (${id(s)}) at (${(p.x / 60).toFixed(2)}, ${(-p.y / 60).toFixed(2)}) {${texState(s)}};`);
+  });
+  L.push("  \\path");
+  G.edges.forEach(e => {
+    const lines = labelLines(e.g.ts, texSym, "/").map(l => "$" + l.text.replace(/,/g, ",\\,") + "$");
+    const node = lines.length > 1 ? `node[align=center] {${lines.join("\\\\ ")}}` : `node {${lines[0]}}`;
+    if (e.loop) {
+      const side = Math.abs(Math.sin(e.ang)) > 0.5 ? (Math.sin(e.ang) < 0 ? "above" : "below") : (Math.cos(e.ang) > 0 ? "right" : "left");
+      L.push(`    (${id(e.g.from)}) edge [loop ${side}] ${node} ()`);
+    } else {
+      const bend = e.off ? ` [bend ${e.flip ? "left" : "right"}=${e.off > 40 ? Math.min(45, Math.round(e.off / 3)) : 18}]` : "";
+      L.push(`    (${id(e.g.from)}) edge${bend} ${node} (${id(e.g.to)})`);
+    }
+  });
+  L.push("  ;");
+  L.push("\\end{tikzpicture}");
+  return L.join("\n");
+}
+
+/* drag */
+(() => {
+  const svg = $("#dia");
+  let drag = null;
+  const pt = ev => { const m = svg.getScreenCTM(); if (!m) return { x:0, y:0 }; const p = new DOMPoint(ev.clientX, ev.clientY).matrixTransform(m.inverse()); return { x:p.x, y:p.y }; };
+  svg.addEventListener("pointerdown", ev => {
+    const lab = ev.target.closest(".el");
+    if (lab) { const lns = lab.dataset.lines.split(",").map(Number); jumpTo(lns[0], lns); return; }
+    const g = ev.target.closest(".node"); if (!g) return;
+    const s = g.dataset.state, p = pt(ev), o = lastPos[s];
+    drag = { s, dx:o.x - p.x, dy:o.y - p.y, moved:false };
+    frozenVB = svg.getAttribute("viewBox").split(" ").map(Number);
+    svg.setPointerCapture(ev.pointerId);
+    ev.preventDefault();
+  });
+  svg.addEventListener("pointermove", ev => {
+    if (!drag) return;
+    const p = pt(ev);
+    dragPos[drag.s] = { x:Math.round((p.x + drag.dx) / 5) * 5, y:Math.round((p.y + drag.dy) / 5) * 5 };
+    drag.moved = true;
+    renderDiagram();
+  });
+  const end = () => { if (!drag) return; drag = null; frozenVB = null; renderDiagram(); $("#bSavePos").disabled = !Object.keys(dragPos).length; };
+  svg.addEventListener("pointerup", end); svg.addEventListener("pointercancel", end);
+})();
+
+/* ---------------- editor ---------------- */
+const ta = $("#code"), hl = $("#hl"), gut = $("#gutter");
+function highlightLine(line){
+  const toks = lex(line);
+  const words = toks.filter(t => t.type !== "ws" && t.type !== "comment");
+  const ai = toks.findIndex(t => t.type === "arrow");
+  const isDir = ai < 0 && words[0] && DIRECTIVES.has(words[0].v);
+  const stateDir = isDir && /^(start|accept|reject|layout)$/.test(words[0].v);
+  let lastComma = -1;
+  if (ai >= 0) { let dd = 0; for (let i = ai + 1; i < toks.length; i++) { const v = toks[i].v; if (v === "[" || v === "{") dd++; else if (v === "]" || v === "}") dd--; else if (v === "," && dd === 0) lastComma = i; } }
+  let first = true, firstAfter = true, dirArg = 0;
+  return toks.map((t, i) => {
+    const e = esc(t.v);
+    switch (t.type) {
+      case "comment": return `<span class="h-c">${e}</span>`;
+      case "string": return `<span class="h-s">${e}</span>`;
+      case "arrow": return `<span class="h-a">${e}</span>`;
+      case "punct": return `<span class="h-p">${e}</span>`;
+      case "ws": return e;
+    }
+    if (first) { first = false; if (isDir) return `<span class="h-k">${e}</span>`; if (ai >= 0) return `<span class="h-q">${e}</span>`; return e; }
+    if (isDir) { dirArg++; if (/^-?\d+(\.\d+)?$/.test(t.v)) return `<span class="h-n">${e}</span>`; return stateDir && (words[0].v !== "layout" || dirArg === 1) ? `<span class="h-q">${e}</span>` : `<span class="h-y">${e}</span>`; }
+    if (ai >= 0 && i > ai) {
+      if (firstAfter) { firstAfter = false; return `<span class="h-q">${e}</span>`; }
+      if (i > lastComma && /^[LRS]$/.test(t.v)) return `<span class="h-m">${e}</span>`;
+    }
+    if (t.v === "*") return `<span class="h-w">${e}</span>`;
+    return `<span class="h-y">${e}</span>`;
+  }).join("");
+}
+let hotLine = 0;
+function renderEditor(){
+  const lines = ta.value.split("\n");
+  hl.innerHTML = lines.map((l, i) => { const h = highlightLine(l); return i + 1 === hotLine ? `<span class="hotline">${h || " "}</span>` : h; }).join("\n") + "\n\n";
+  const errs = new Map();
+  if (M) M.diags.forEach(dg => { if (dg.line && (!errs.has(dg.line) || dg.sev === "error")) errs.set(dg.line, dg.sev); });
+  gut.innerHTML = lines.map((_, i) => { const s = errs.get(i + 1); return `<div${s === "error" ? ' class="err"' : s === "warn" ? ' class="wrn"' : ""}>${i + 1}</div>`; }).join("") + "<div>&nbsp;</div><div>&nbsp;</div>";
+  syncScroll();
+}
+function syncScroll(){ hl.scrollTop = ta.scrollTop; hl.scrollLeft = ta.scrollLeft; gut.scrollTop = ta.scrollTop; }
+ta.addEventListener("scroll", syncScroll);
+ta.addEventListener("keydown", ev => {
+  if (ev.key === "Tab" && !ev.shiftKey) {
+    ev.preventDefault();
+    const s = ta.selectionStart, e = ta.selectionEnd;
+    ta.setRangeText("  ", s, e, "end");
+    onInput();
+  }
+});
+function jumpTo(line){
+  if (!line) return;
+  const lines = ta.value.split("\n");
+  let off = 0; for (let i = 0; i < line - 1 && i < lines.length; i++) off += lines[i].length + 1;
+  ta.focus({ preventScroll:true });
+  ta.setSelectionRange(off, off + (lines[line - 1] || "").length);
+  ta.scrollTop = Math.max(0, (line - 4) * 20);
+  syncScroll();
+}
+function renderDiags(){
+  const ul = $("#diags"); const ds = M ? M.diags : [];
+  const nErr = ds.filter(d => d.sev === "error").length;
+  const pc = $("#pcount"); pc.textContent = ds.filter(d => d.sev !== "info").length; pc.className = "count" + (nErr ? " bad" : "");
+  if (!ds.length) { ul.innerHTML = `<li class="ok-msg" style="cursor:default">No problems. ${M.trans.length} transition${M.trans.length === 1 ? "" : "s"}, ${M.states.length} states.</li>`; return; }
+  ul.innerHTML = ds.map(d => `<li data-line="${d.line}"><span class="sev ${d.sev}">${d.sev}</span><span class="ln">${d.line ? "line " + d.line : "machine"}</span><span>${esc(d.msg)}</span></li>`).join("");
+}
+$("#diags").addEventListener("click", ev => { const li = ev.target.closest("li[data-line]"); if (li) jumpTo(+li.dataset.line); });
+
+let sig = "", parseTimer = null;
+function signature(M){ return JSON.stringify([M.k, M.blank, M.start, M.accept, M.reject, M.tape, M.mode, M.input, M.trans.map(t => [t.from, t.to, t.read, t.write, t.move])]); }
+function reparse(){
+  M = parse(ta.value);
+  const ns = signature(M);
+  $("#mname").textContent = M.name || "Untitled machine";
+  $("#bTapes").textContent = `${M.k} tape${M.k === 1 ? "" : "s"}`;
+  const bm = $("#bMode"); bm.textContent = M.nondet ? "nondeterministic" : "deterministic"; bm.className = "badge" + (M.nondet ? " nd" : "");
+  $("#bTape").textContent = M.tape === "infinite" ? "two-way infinite tape" : "one-way tape";
+  // forget drag positions for states that no longer exist
+  Object.keys(dragPos).forEach(s => { if (!M.states.includes(s)) delete dragPos[s]; });
+  $("#bSavePos").disabled = !Object.keys(dragPos).length;
+  renderDiags(); renderEditor();
+  if (ns !== sig) {
+    const inputChanged = !sig || JSON.parse(sig)[7] !== M.input;
+    sig = ns;
+    if (inputChanged && M.input != null) $("#inp").value = M.input;
+    resetSim();
+  } else { if (sim && !M.hasErrors) {} renderSim(); renderDiagram(); }
+  try { localStorage.setItem("tapewright.code.v2", ta.value); } catch (e) {}
+}
+function onInput(){ renderEditor(); clearTimeout(parseTimer); parseTimer = setTimeout(reparse, 140); }
+ta.addEventListener("input", onInput);
+
+/* ---------------- sim render ---------------- */
+function renderSim(){
+  const pill = $("#status"), why = $("#why"), tapesEl = $("#tapes");
+  const dis = !sim;
+  ["#bReset", "#bBack", "#bStep", "#bRun", "#bLoad"].forEach(s => $(s).disabled = dis);
+  if (!sim) {
+    pill.className = "pill"; pill.textContent = "not ready";
+    why.textContent = M && M.hasErrors ? "Fix the errors listed under Problems to run the machine." : "Add a start state to run the machine.";
+    tapesEl.innerHTML = ""; $("#chips").innerHTML = ""; $("#hist").innerHTML = ""; $("#stepno").textContent = "step 0";
+    hotLine = 0; return;
+  }
+  const gen = curGen(), res = resultOf(gen), step = sim.gens.length - 1;
+  const c = gen[sim.sel] || gen[0];
+  $("#stepno").textContent = `step ${step}`;
+  $("#bBack").disabled = step === 0;
+  $("#bStep").disabled = !!res;
+  $("#bRun").disabled = !!res;
+  const limit = !res && step >= STEP_LIMIT;
+  if (res === "accept") { pill.className = "pill acc"; pill.textContent = "accepted"; }
+  else if (res === "reject") { pill.className = "pill rej"; pill.textContent = "rejected"; }
+  else if (limit) { pill.className = "pill lim"; pill.textContent = "step limit"; }
+  else { pill.className = "pill" + (running ? " run" : ""); pill.textContent = running ? "running" : step ? "paused" : "ready"; }
+  let msg = "";
+  if (res === "accept") msg = M.nondet ? `A branch reached ${gen.find(x => x.status === "accept").state} after ${step} steps, so the machine accepts.` : `Reached ${c.state} after ${step} steps, so the machine accepts.`;
+  else if (res === "reject") msg = M.nondet && gen.length > 1 ? `Every branch halted without accepting. Selected branch: ${c.why}` : (c ? c.why : "No branches left.");
+  else if (limit) msg = `Stopped after ${STEP_LIMIT} steps. The machine may loop forever on this input.`;
+  else if (c && c.via) { const pr = readAll(M, c.parent), ls = labelLines([c.via], dispSym, "/"); msg = `Applied line ${c.via.ln}: ${(ls.find(l => lineMatches(l, c.via, pr)) || ls[0]).text}`; }
+  else msg = M.tape === "oneway" ? `Start in ${M.start} with the head on Z, the left end of the tape.` : `Start in ${M.start} with the head on the first input symbol.`;
+  if (sim.truncated) msg += ` Showing at most ${GEN_CAP} branches per step.`;
+  why.textContent = msg;
+  hotLine = c && c.via ? c.via.ln : 0;
+  renderEditor();
+
+  // tapes
+  tapesEl.innerHTML = c.tapes.map((tp, i) => {
+    let lo = tp.head, hi = tp.head;
+    for (const k of tp.cells.keys()) { if (k < lo) lo = k; if (k > hi) hi = k; }
+    lo -= 3; hi += 6;
+    if (M.tape === "oneway") lo = 0;
+    while (hi - lo < 15) hi++;
+    let cells = "";
+    for (let j = lo; j <= hi; j++) {
+      const v = tget(tp, j, M.blank), cls = ["cell"];
+      if (v === M.blank) cls.push("blank");
+      if (j === tp.head) cls.push("head");
+      if (j === 0 && M.tape === "oneway") cls.push("edge");
+      if (v === Z0 && M.tape === "oneway") cls.push("z0");
+      if (c.wrote && c.wrote[i] === j && !(M.k > 1 && i === 0)) cls.push("wrote");
+      cells += `<div class="${cls.join(" ")}"><span>${zH(esc(dispSym(v)))}</span>${j === tp.head ? `<span class="ix">${j}</span>` : ""}</div>`;
+    }
+    return `<div class="tape-row"><span class="lbl">${M.k > 1 && i === 0 ? "Input" : "Tape " + (i + 1)}</span><div class="tape" data-head="${tp.head - lo}">${cells}</div></div>`;
+  }).join("");
+  tapesEl.querySelectorAll(".tape").forEach(el => { const h = el.children[+el.dataset.head]; if (h) el.scrollLeft = h.offsetLeft - el.clientWidth / 2 + 17; });
+
+  // branches
+  const showB = M.nondet || gen.length > 1;
+  $("#branchBox").hidden = !showB;
+  $("#split").className = "split" + (showB ? "" : " one");
+  if (showB) {
+    const alive = gen.filter(x => x.status === "active").length;
+    $("#bcount").textContent = `(${gen.length} total, ${alive} active)`;
+    const lim = 80;
+    $("#chips").innerHTML = gen.slice(0, lim).map((x, i) => `<button type="button" class="chip${x.status === "accept" ? " acc" : x.status === "reject" ? " rej" : ""}${i === sim.sel ? " sel" : ""}" data-i="${i}" title="${esc(x.why || "active")}"><span class="cs">${cfgHTML(x)}</span></button>`).join("") + (gen.length > lim ? `<span class="stepno">+${gen.length - lim} more</span>` : "");
+  }
+  // history
+  const chain = []; for (let x = c; x; x = x.parent) chain.push(x);
+  chain.reverse();
+  const shown = chain.slice(-300);
+  $("#hist").innerHTML = (chain.length > shown.length ? `<li><span class="n">…</span><span class="cs">${chain.length - shown.length} earlier steps</span><span></span></li>` : "") +
+    shown.map(x => `<li><span class="n">${x.step}</span><span class="cs">${cfgHTML(x)}</span><span class="via">${x.via ? "line " + x.via.ln : "start"}</span></li>`).join("");
+  const h = $("#hist"); h.scrollTop = h.scrollHeight;
+}
+$("#chips").addEventListener("click", ev => { const b = ev.target.closest(".chip"); if (!b) return; sim.sel = +b.dataset.i; renderSim(); renderDiagram(); });
+
+/* ---------------- controls ---------------- */
+$("#bStep").onclick = () => { stopRun(); stepOnce(); renderSim(); renderDiagram(); };
+$("#bBack").onclick = () => { stopRun(); back(); renderSim(); renderDiagram(); };
+$("#bReset").onclick = () => { resetSim(); };
+$("#bLoad").onclick = () => resetSim();
+$("#inp").addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); resetSim(); } });
+$("#bRun").onclick = () => { if (running) { stopRun(); renderSim(); return; } if (!sim || resultOf(curGen())) return; running = true; $("#bRun").textContent = "Pause"; tick(); };
+hideRej.addEventListener("change", () => renderDiagram());
+
+function stripLayout(code){ return code.split("\n").filter(l => !/^\s*layout\b/.test(l) && !/^\s*\/\/ diagram positions/.test(l)).join("\n").replace(/\n{3,}$/,"\n"); }
+$("#bSavePos").onclick = () => {
+  const base = stripLayout(ta.value).replace(/\s*$/, "");
+  const states = Object.keys(lastPos);
+  const block = "\n\n// diagram positions\n" + states.map(s => `layout ${s} ${Math.round(lastPos[s].x)} ${Math.round(lastPos[s].y)}`).join("\n") + "\n";
+  const prev = ta.value;
+  ta.value = base + block;
+  dragPos = {};
+  reparse();
+  toast("Positions saved as layout lines at the end of the source.", prev);
+};
+$("#bAuto").onclick = () => {
+  const prev = ta.value;
+  const had = /^\s*layout\b/m.test(prev);
+  dragPos = {};
+  if (had) { ta.value = stripLayout(prev); reparse(); toast("Removed layout lines. States are placed automatically.", prev); }
+  else { reparse(); }
+};
+
+/* examples */
+const exSel = $("#ex");
+exSel.innerHTML = `<option value="">Choose…</option>` + EXAMPLES.map(e => `<option value="${e.id}">${esc(e.label)}</option>`).join("");
+exSel.addEventListener("change", () => {
+  const e = EXAMPLES.find(x => x.id === exSel.value); if (!e) return;
+  const prev = ta.value;
+  ta.value = e.code; dragPos = {}; sig = "";
+  reparse(); ta.scrollTop = 0; syncScroll();
+  exSel.value = "";
+  if (prev.trim() && prev !== e.code) toast(`Loaded “${e.label}”.`, prev);
+});
+
+/* toast with undo */
+let toastTimer = null, undoText = null;
+function toast(msg, undo){
+  $("#toastMsg").textContent = msg; undoText = undo ?? null;
+  $("#toastUndo").hidden = undoText == null;
+  $("#toast").hidden = false; clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $("#toast").hidden = true, 6000);
+}
+$("#toastUndo").onclick = () => { if (undoText == null) return; ta.value = undoText; dragPos = {}; sig = ""; reparse(); $("#toast").hidden = true; };
+
+/* export overlay */
+function openExport(title, note, text, opts){
+  $("#ovTitle").textContent = title; $("#ovNote").textContent = note; $("#ovText").value = text;
+  const img = opts && opts.img;
+  $("#ovText").hidden = !!img; $("#ovCopy").hidden = !!img;
+  $("#ovImg").hidden = !img; $("#ovImg").innerHTML = "";
+  if (img) $("#ovImg").appendChild(img);
+  $("#ovDl").hidden = !(opts && opts.svg);
+  $("#ov").hidden = false; $("#ovCopy").focus();
+}
+$("#bSvg").onclick = () => openExport("SVG", "Standalone SVG with a white background. Download it as a file, or copy it into slides and drawing tools that accept SVG.", exportSVG(), { svg:true });
+$("#ovDl").onclick = () => saveFile(fileBase() + ".svg", new Blob([exportSVG()], { type:"image/svg+xml" }));
+
+/* image download: claude.ai viewer uses the downloads capability; a self-hosted copy uses a normal link */
+let dlCap = null, inClaude = false;
+try { if (window.claude && window.claude.use) { inClaude = true; window.claude.use("downloads").then(d => { dlCap = d; }, () => {}); } } catch (e) {}
+const fileBase = () => ((M && M.name) || "turing-machine").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "turing-machine";
+async function saveFile(name, blob, previewImg){
+  if (dlCap) {
+    try { await dlCap.save({ filename:name, data:blob }); toast(`Saved ${name}.`); }
+    catch (e) {
+      if (e && e.code === "declined") return;
+      if (e && e.code === "rate_limited") { toast("A save prompt is already open."); return; }
+      showFallback(name, blob, previewImg);
+    }
+    return;
+  }
+  if (inClaude) { showFallback(name, blob, previewImg); return; }
+  const url = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  toast(`Downloaded ${name}.`);
+}
+function showFallback(name, blob, previewImg){
+  const img = previewImg || new Image();
+  if (!previewImg) img.src = URL.createObjectURL(blob);
+  img.style.maxWidth = "100%"; img.alt = "State diagram";
+  openExport("Image", "Saving files is not available in this view. Right-click the image (or long-press on a phone) and choose Save Image or Copy Image.", "", { img });
+}
+function renderPNG(scale){
+  return new Promise((resolve, reject) => {
+    const svg = exportSVG();
+    const w = +svg.match(/width="(\d+)"/)[1], h = +svg.match(/height="(\d+)"/)[1];
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+      const g = c.getContext("2d");
+      g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+      g.drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(b => b ? resolve({ blob:b, url:c.toDataURL("image/png") }) : reject(new Error("toBlob failed")), "image/png");
+    };
+    img.onerror = () => reject(new Error("svg load failed"));
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  });
+}
+$("#bPng").onclick = async () => {
+  if (!M) return;
+  try {
+    const { blob, url } = await renderPNG(3);
+    const prev = new Image(); prev.src = url;
+    await saveFile(fileBase() + ".png", blob, prev);
+  } catch (e) { toast("Could not draw the image. Try Export SVG instead."); }
+};
+$("#bTikz").onclick = () => openExport("TikZ", "For LaTeX lecture notes and exams. Positions match the diagram. Add \\usetikzlibrary{automata, arrows.meta} to your preamble.", exportTikZ());
+$("#bExBlock").onclick = () => {
+  const label = (M && M.name) || "My example";
+  const code = ta.value.replace(/\s+$/, "").replace(/<\/script/gi, "<\\/script");
+  openExport("Example block", "Paste this into your copy of index.html, next to the other <script type=\"text/x-turing\"> blocks near the top of the file. Change data-label to rename it in the Example menu.", `<script type="text/x-turing" data-label="${label.replace(/"/g, "&quot;")}">\n${code}\n</` + `script>`);
+};
+$("#ovClose").onclick = () => $("#ov").hidden = true;
+$("#ov").addEventListener("click", ev => { if (ev.target.id === "ov") $("#ov").hidden = true; });
+document.addEventListener("keydown", ev => { if (ev.key === "Escape" && !$("#ov").hidden) $("#ov").hidden = true; });
+$("#ovCopy").onclick = () => {
+  const t = $("#ovText");
+  const fallback = () => { t.focus(); t.select(); toast("Text selected. Press Ctrl+C or ⌘C to copy."); };
+  try { navigator.clipboard.writeText(t.value).then(() => toast("Copied to the clipboard."), fallback); } catch (e) { fallback(); }
+};
+
+/* tabs */
+const tabs = [["#tabP", "#dockP"], ["#tabG", "#dockG"]];
+tabs.forEach(([t]) => $(t).addEventListener("click", () => tabs.forEach(([t2, d2]) => { const on = t2 === t; $(t2).setAttribute("aria-selected", on); $(d2).hidden = !on; })));
+
+/* boot */
+let saved = null;
+try { saved = localStorage.getItem("tapewright.code.v2"); } catch (e) {}
+ta.value = saved && saved.trim() ? saved : EXAMPLES[0].code;
+reparse();
+})();
+</script>
+
+</body>
+</html>
