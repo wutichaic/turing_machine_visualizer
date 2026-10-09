@@ -32,9 +32,9 @@ q2, 1 -> q0, 1, R
 // any missing transition rejects
 </script>
 
-<script type="text/x-turing" data-label="Example 1">
+<script type="text/x-turing" data-label="Matching Zero Before One">
 
-name "Example 1"
+name "Matching Zero Before One"
 start q0
 accept q3
 input "010011"
@@ -53,6 +53,33 @@ q2, x -> q0, R
 // any missing transition rejects
 </script>
 
+
+<script type="text/x-turing" data-label="Quiz 1">
+name "Quiz 1"
+start q0
+accept q6
+input "010"
+
+q0, {x, Z} -> q0, R        
+q0, 0 -> q1, x, R      
+q0, 1 -> q4, R       
+
+q1, 0 -> q1, R  
+q1, 1 -> q2, R
+
+q2, 0 -> q3, x, L   
+q2, x -> q2, R
+
+q3, {0, 1, x} -> q3, L
+q3, Z -> q0, R
+
+q4, 0 -> q5, R
+q4, x -> q4, R
+
+q5, 0 -> q5, R
+q5, # -> q6, R
+// any missing transition rejects
+</script>
 
 
 <style>
