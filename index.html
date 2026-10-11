@@ -191,7 +191,6 @@ q6, # -> q7, R
 // any missing transition rejects
 </script>
 
-
 <style>
 :root{
   --bg:#E9EDF1; --panel:#FFFFFF; --panel-2:#F4F6F9; --canvas:#FAFBFC;
@@ -416,10 +415,10 @@ q0, Z -> q0, Z, R     // Z is the left end of a one-way tape</pre>
             <h3>Diagram labels</h3>
             <p>Edges are labelled <code>read/write,move</code>, for example <code>0/x,R</code>. The written symbol is always shown, so <code>q1, {0,y} -> q1, R</code> is drawn as <code>0/0,R</code> and <code>y/y,R</code>.</p>
             <h3>Multi-tape</h3>
-            <p>Use brackets with one entry per tape for reads and moves. Tape 1 is the <b>read-only input tape</b>: its head moves only R or S, and its write is left out, so the write list covers tapes 2, 3, … only. <code>*</code> in a write keeps what was read. On a one-way tape every tape starts with Z in cell 0.</p>
+            <p>Use brackets with one entry per tape for reads and moves. The first entry is always the <b>read-only input tape</b>: its head moves only R or S, and its write is left out, so the write list covers the work tapes only. Work tapes are numbered Tape 1, Tape 2, … in the simulator. <code>*</code> in a write keeps what was read. The input tape holds only the input, with its head on the first symbol; on a one-way tape each work tape starts with Z in cell 0, head on Z.</p>
 <pre>tapes 2
-init, [Z, Z] -> push, [Z], [R, R]
-push, [a, #] -> push, [a], [R, R]    // writes a on tape 2
+init, [*, Z] -> push, [Z], [S, R]   // input has no Z; work tape starts on Z
+push, [a, #] -> push, [a], [R, R]    // writes a on tape 1
 pop, [b, a] -> pop, [R, L]           // omit writes to keep symbols</pre>
             <p>Diagram labels read <code>(a,#)/a,(R,R)</code>: the symbols read on every tape, the symbols written on the work tapes, then the moves.</p>
             <h3>Nondeterminism</h3>
@@ -430,10 +429,10 @@ pop, [b, a] -> pop, [R, L]           // omit writes to keep symbols</pre>
               <tr><td>start q0</td><td>Start state (required)</td></tr>
               <tr><td>accept qa qb</td><td>Accepting states</td></tr>
               <tr><td>reject qr</td><td>Rejecting states. A missing transition also rejects.</td></tr>
-              <tr><td>tapes 2</td><td>Number of tapes (inferred from brackets if omitted)</td></tr>
+              <tr><td>tapes 2</td><td>Number of tapes including the input tape, so <code>tapes 2</code> is the input tape plus one work tape (inferred from brackets if omitted)</td></tr>
               <tr><td>blank #</td><td>Blank symbol. Default is #; change it only if you need # as an ordinary symbol.</td></tr>
-              <tr><td>input "0011"</td><td>Default input, written on tape 1</td></tr>
-              <tr><td>tape oneway</td><td>Default. One-way tape: cell 0 holds the left-end marker <code>Z</code>, the input starts in cell 1, and the machine starts with its head on Z. Z must be written back as Z, and moving L from Z rejects.</td></tr>
+              <tr><td>input "0011"</td><td>Default input, written on the (input) tape</td></tr>
+              <tr><td>tape oneway</td><td>Default. One-way tape: cell 0 holds the left-end marker <code>Z</code>, the input starts in cell 1, and the machine starts with its head on Z. With several tapes, only the work tapes start with Z; the input tape holds just the input. Z must be written back as Z, and moving L from Z rejects.</td></tr>
               <tr><td>tape infinite</td><td>Two-way infinite tape with no end marker; the head starts on the first input symbol.</td></tr>
               <tr><td>mode nondeterministic</td><td>or <code>deterministic</code>; inferred if omitted</td></tr>
               <tr><td>layout q0 0 120</td><td>Pin a state's position. Drag states, then use “Save positions”.</td></tr>
@@ -695,8 +694,8 @@ function parse(src){
   M.trans = M.trans.filter(t => !bad.has(t));
   if (M.k > 1) M.trans.forEach(t => {
     const w0 = t.write[0], r0 = t.read[0];
-    if (w0 !== "*" && !(r0.t === "sym" && r0.s === w0)) diag(t.ln, "error", `Tape 1 is the read-only input tape, so it cannot be written. List writes for ${M.k === 2 ? "tape 2" : "tapes 2–" + M.k} only, e.g. [${t.write.slice(1).join(", ")}].`);
-    if (t.move[0] === "L") diag(t.ln, "error", "Tape 1 is the input tape and can only move R or S.");
+    if (w0 !== "*" && !(r0.t === "sym" && r0.s === w0)) diag(t.ln, "error", `The input tape is read-only, so it cannot be written. List writes for the ${M.k === 2 ? "work tape" : M.k - 1 + " work tapes"} only, e.g. [${t.write.slice(1).join(", ")}].`);
+    if (t.move[0] === "L") diag(t.ln, "error", "The input tape can only move R or S.");
     t.write[0] = "*";
   });
 
@@ -761,7 +760,8 @@ function initConfig(M, input){
   const tapes = [];
   for (let i = 0; i < M.k; i++) {
     const cells = new Map();
-    const off = M.tape === "oneway" ? 1 : 0;
+    // multi-tape: the read-only input tape (tape 1) holds only the input; work tapes start with Z
+    const off = M.tape === "oneway" && !(M.k > 1 && i === 0) ? 1 : 0;
     if (off) cells.set(0, Z0);
     if (i === 0) [...input].forEach((ch, j) => { if (ch !== M.blank) cells.set(j + off, ch); });
     tapes.push({ cells, head:0 });
@@ -784,7 +784,7 @@ function apply(M, c, t){
   });
   const n = { id:cid++, state:t.to, tapes, parent:c, via:t, step:c.step + 1, wrote };
   [n.status, n.why] = statusOf(M, n);
-  if (fell) { n.status = "reject"; n.why = `The head on tape ${fell} moved left from Z, off the end of the one-way tape, so this branch rejects.`; }
+  if (fell) { n.status = "reject"; n.why = `The head on ${M.k > 1 ? "tape " + (fell - 1) : "the tape"} moved left from Z, off the end of the one-way tape, so this branch rejects.`; }
   return n;
 }
 const GEN_CAP = 600, STEP_LIMIT = 20000;
@@ -1267,7 +1267,7 @@ function renderSim(){
   else if (res === "reject") msg = M.nondet && gen.length > 1 ? `Every branch halted without accepting. Selected branch: ${c.why}` : (c ? c.why : "No branches left.");
   else if (limit) msg = `Stopped after ${STEP_LIMIT} steps. The machine may loop forever on this input.`;
   else if (c && c.via) { const pr = readAll(M, c.parent), ls = labelLines([c.via], dispSym, "/"); msg = `Applied line ${c.via.ln}: ${(ls.find(l => lineMatches(l, c.via, pr)) || ls[0]).text}`; }
-  else msg = M.tape === "oneway" ? `Start in ${M.start} with the head on Z, the left end of the tape.` : `Start in ${M.start} with the head on the first input symbol.`;
+  else msg = M.tape !== "oneway" ? `Start in ${M.start} with the head on the first input symbol.` : M.k > 1 ? `Start in ${M.start}. The input-tape head is on the first input symbol; work-tape heads are on Z.` : `Start in ${M.start} with the head on Z, the left end of the tape.`;
   if (sim.truncated) msg += ` Showing at most ${GEN_CAP} branches per step.`;
   why.textContent = msg;
   hotLine = c && c.via ? c.via.ln : 0;
@@ -1290,7 +1290,7 @@ function renderSim(){
       if (c.wrote && c.wrote[i] === j && !(M.k > 1 && i === 0)) cls.push("wrote");
       cells += `<div class="${cls.join(" ")}"><span>${zH(esc(dispSym(v)))}</span>${j === tp.head ? `<span class="ix">${j}</span>` : ""}</div>`;
     }
-    return `<div class="tape-row"><span class="lbl">${M.k > 1 && i === 0 ? "Input" : "Tape " + (i + 1)}</span><div class="tape" data-head="${tp.head - lo}">${cells}</div></div>`;
+    return `<div class="tape-row"><span class="lbl">${M.k > 1 ? (i === 0 ? "Input" : "Tape " + i) : "Tape"}</span><div class="tape" data-head="${tp.head - lo}">${cells}</div></div>`;
   }).join("");
   tapesEl.querySelectorAll(".tape").forEach(el => { const h = el.children[+el.dataset.head]; if (h) el.scrollLeft = h.offsetLeft - el.clientWidth / 2 + 17; });
 
