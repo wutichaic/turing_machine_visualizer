@@ -191,6 +191,207 @@ q6, # -> q7, R
 // any missing transition rejects
 </script>
 
+
+<script type="text/x-turing" data-label="String Twice">
+// L = { ww | w in {0,1}^* }
+name "ww"
+start q0
+accept q9
+input "010010"
+
+q0, {a, Z} -> q0, R          
+q0, 0 -> q1, x, R       
+q0, 1 -> q1, y, R       
+q0, x -> q4, a, L
+q0, y -> q7, a, L    
+q0, # -> q9, R      
+
+q1, {0, 1} -> q1, R
+q1, {x, y, #} -> q2, L
+
+q2, 0 -> q3, x, L   
+q2, 1 -> q3, y, L
+
+q3, {0, 1} -> q3, L
+q3, {x, y} -> q0, R 
+
+q4, {x, y, a} -> q4, L
+q4, {Z} -> q5, R      
+
+q5, a -> q5, R
+q5, x -> q6, a, R // mark the matching 0(x)
+
+q6, {x, y} -> q6, R
+q6, a -> q0, R   // find the midpoint
+
+q7, {x, y, a} -> q7, L
+q7, Z -> q8, R   
+
+q8, a -> q8, R
+q8, y -> q6, a, R // mark the matching 1(y)
+     
+// any missing transition rejects
+</script>
+
+
+<script type="text/x-turing" data-label="Left greater than right">
+// L = { 0^n10^m | n>m>=0}
+name "0^n10^m, n>m"
+start q0
+accept q4
+input "010"
+
+q0, {x, Z} -> q0, R        
+q0, 0 -> q1, x, R        
+
+q1, 0 -> q1, R  
+q1, 1 -> q2, R
+
+q2, 0 -> q3, x, L   
+q2, x -> q2, R
+q2, # -> q4, R
+
+q3, {0, 1, x} -> q3, L
+q3, Z -> q0, R
+
+// any missing transition rejects
+</script>
+
+
+<script type="text/x-turing" data-label="Same Number 0's,1's">
+// L = {w in {0,1}^* | n_w(1) = n_w(0)}
+name "n_w(1)=n_w(0) (2-way tape)"
+start q0
+accept q5
+input "011001"
+tape infinite
+
+q0, {0, x, y} -> q0, R          
+q0, 1 -> q1, x, L   
+q0, # -> q2, L   
+
+q1, {0, 1, x, y} -> q1, L
+q1, # -> q0, y, R
+
+q2, x -> q2, L   
+q2, 0 -> q3, x, L
+q2, # -> q5, R
+
+q3, {0, 1, x, y} -> q3, L
+q3, # -> q4, R 
+
+q4, y -> q0, #, R
+q4, x -> q4, R    
+     
+// any missing transition rejects
+</script>
+
+
+<script type="text/x-turing" data-label="Twice Number of 1's">
+// L = {w in {0,1}^* | n_w(1) = 2 n_w(0)}
+name "n_w(1)=2n_w(0) (2-way tape)"
+accept q6
+input "010001"
+tape infinite
+
+q0, {0, x, y} -> q0, R          
+q0, 1 -> q1, x, L   
+q0, # -> q3, L   
+
+q1, {0, 1, x, y} -> q1, L
+q1, # -> q2, y, L
+
+q2, # -> q0, y, R
+
+q3, x -> q3, L   
+q3, 0 -> q4, x, L
+q3, # -> q6, R
+
+q4, {0, 1, x, y} -> q4, L
+q4, # -> q5, R 
+
+q5, y -> q0, #, R
+q5, x -> q5, R    
+     
+// any missing transition rejects
+</script>
+
+
+<script type="text/x-turing" data-label="Twice Number of 1's (2-tape)">
+// L = {w in {0,1}^* | n_w(1) = 2 n_w(0)}
+name "n_w(1)=2n_w(0) (2-tape)"
+start q0
+accept q3
+input "010"
+tapes 3
+
+q0, [*, Z, Z] -> q0, [S, R, R] 
+       
+q0, [0, #, #] -> q0, [0, #], [R, R, S]      
+q0, [1, #, #] -> q1, [#, 1], [R, S, R]     
+q0, [#, #, #] -> q2, [S, L, L]      
+
+q1, [*, #, #] -> q0, [#, 1], [S, S, R]  
+
+q2, [#, 0, 1] -> q2, [S, L, L]
+q2, [#, Z, Z] -> q3, [S, R, R]    
+  
+// any missing transition rejects
+</script>
+
+
+<script type="text/x-turing" data-label="String Twice (3-tape)">
+// L = { ww | w in {0,1}^* }
+name "ww (3-tape)"
+start q0
+accept q5
+input "010010"
+tapes 4
+
+q0, [*, Z, Z, Z] -> q0, [S, R, R, R] 
+q0, [0, #, #, #] -> q0, [0, 1, #], [R, R, R, S] 
+q0, [1, #, #, #] -> q0, [1, 1, #], [R, R, R, S] 
+q0, [#, #, #, #] -> q1, [S, L, L, S]
+
+q1, [#, *, 1, #] -> q2, [S, S, L, S]
+q1, [#, *, Z, #] -> q3, [S, S, S, L]
+
+q2, [#, 0, 1, #] -> q1, [0, 1, 0], [S, L, L, R]
+q2, [#, 1, 1, #] -> q1, [1, 1, 1], [S, L, L, R]
+
+q3, [#, *, Z, 0] -> q3, [S, S, S, L]
+q3, [#, *, Z, 1] -> q3, [S, S, S, L]
+q3, [#, *, Z, Z] -> q4, [S, S, S, R]
+
+q4, [#, 0, Z, 0] -> q4, [S, L, S, R]
+q4, [#, 1, Z, 1] -> q4, [S, L, S, R]
+q4, [#, Z, Z, #] -> q5, [S, S, S, S]
+  
+// any missing transition rejects
+</script>
+
+
+<script type="text/x-turing" data-label="Function 1">
+name "Function 1"
+tape infinite
+start q0
+accept q4
+input "1011"
+
+q0, {0, 1} -> q0, R
+q0, # -> q1, L
+
+q1, 0 -> q2, #, L
+q1, 1 -> q3, #, L
+
+q2, {0, 1} -> q2, L
+q2, # -> q4, 0, S
+
+q3, {0, 1} -> q3, L
+q3, # -> q4, 1, S
+</script>
+
+
 <style>
 :root{
   --bg:#E9EDF1; --panel:#FFFFFF; --panel-2:#F4F6F9; --canvas:#FAFBFC;
