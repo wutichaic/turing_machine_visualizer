@@ -54,8 +54,9 @@ q2, x -> q0, R
 </script>
 
 
-<script type="text/x-turing" data-label="Quiz 1">
-name "Quiz 1"
+<script type="text/x-turing" data-label="Left less than right">
+// L = { 0^n10^m | 0<=n<m}
+name "0^n10^m, n<m"
 start q0
 accept q6
 input "010"
@@ -371,11 +372,21 @@ q4, [#, Z, Z, #] -> q5, [S, S, S, S]
 </script>
 
 
-<script type="text/x-turing" data-label="Function 1">
-name "Function 1"
+<script type="text/x-turing" data-label="Unitary Increment">
+name "Unitary Increment"
 tape infinite
 start q0
-accept q4
+input "1111"
+
+q0, 1 -> q0, R
+q0, # -> q1, 1, S
+</script>
+
+
+<script type="text/x-turing" data-label="RightRotate">
+name "RightRotate (2-way tape)"
+tape infinite
+start q0
 input "1011"
 
 q0, {0, 1} -> q0, R
@@ -389,6 +400,150 @@ q2, # -> q4, 0, S
 
 q3, {0, 1} -> q3, L
 q3, # -> q4, 1, S
+</script>
+
+
+<script type="text/x-turing" data-label="Binary Add (3 tapes)">
+name "Binary Add (3 tapes)"
+start q0
+input "101+1110"
+tapes 4
+
+q0, [*, Z, Z, Z] -> q0, [S, R, R, R]
+//copy input1 to tape 1
+q0, [0, #, #, #] -> q0, [0, #, #], [R, R, S, R] 
+q0, [1, #, #, #] -> q0, [1, #, #], [R, R, S, R]
+q0, [+, #, #, #] -> q1, [R, S, S, S]
+
+//copy input2 to tape 2
+q1, [0, #, #, #] -> q1, [#, 0, #], [R, S, R, R] 
+q1, [1, #, #, #] -> q1, [#, 1, #], [R, S, R, R]
+q1, [#, #, #, #] -> q2, [#, #, +], [S, L, L, L]
+
+//add from the right most digit
+q2, [#, 0, 0, #] -> q2, [0, 0, 0], [S, L, L, L]
+q2, [#, 0, 1, #] -> q2, [0, 1, 1], [S, L, L, L]
+q2, [#, 1, 0, #] -> q2, [1, 0, 1], [S, L, L, L]
+q2, [#, 1, 1, #] -> q3, [1, 1, 0], [S, L, L, L] //carry 1
+q2, [#, Z, 0, #] -> q2, [Z, 0, 0], [S, S, L, L]
+q2, [#, Z, 1, #] -> q2, [Z, 1, 1], [S, S, L, L]
+q2, [#, 0, Z, #] -> q2, [0, Z, 0], [S, L, S, L]
+q2, [#, 1, Z, #] -> q2, [1, Z, 1], [S, L, S, L]
+q2, [#, Z, Z, #] -> q4, [S, S, S, R]
+
+//with carry 1
+q3, [#, 0, 0, #] -> q2, [0, 0, 1], [S, L, L, L]
+q3, [#, 0, 1, #] -> q3, [0, 1, 0], [S, L, L, L]
+q3, [#, 1, 0, #] -> q3, [1, 0, 0], [S, L, L, L]
+q3, [#, 1, 1, #] -> q3, [1, 1, 1], [S, L, L, L] 
+q3, [#, Z, 0, #] -> q2, [Z, 0, 1], [S, S, L, L]
+q3, [#, Z, 1, #] -> q3, [Z, 1, 0], [S, S, L, L]
+q3, [#, 0, Z, #] -> q2, [0, Z, 1], [S, L, S, L]
+q3, [#, 1, Z, #] -> q3, [1, Z, 0], [S, L, S, L]
+q3, [#, Z, Z, #] -> q4, [Z, Z, 1], [S, S, S, S]
+
+//(optional) shifting output to the leftmost positions
+q4, [#, Z, Z, #] -> q4, [Z, Z, #], [S, S, S, R]
+q4, [#, Z, Z, 0] -> q5, [Z, Z, #], [S, S, S, L]
+q4, [#, Z, Z, 1] -> q7, [Z, Z, #], [S, S, S, L]
+q4, [#, Z, Z, +] -> q9, [Z, Z, #], [S, S, S, S]
+
+q5, [#, Z, Z, #] -> q5, [S, S, S, L]
+q5, [#, Z, Z, Z] -> q6, [S, S, S, R]
+q5, [#, Z, Z, 0] -> q6, [S, S, S, R]
+q5, [#, Z, Z, 1] -> q6, [S, S, S, R]
+
+q6, [#, Z, Z, #] -> q4, [Z, Z, 0], [S, S, S, R]
+
+q7, [#, Z, Z, #] -> q7, [S, S, S, L]
+q7, [#, Z, Z, Z] -> q8, [S, S, S, R]
+q7, [#, Z, Z, 0] -> q8, [S, S, S, R]
+q7, [#, Z, Z, 1] -> q8, [S, S, S, R]
+
+q8, [#, Z, Z, #] -> q4, [Z, Z, 1], [S, S, S, R]
+</script>
+
+
+<script type="text/x-turing" data-label="Binary Add (4-tape)">
+name "Binary Add (4-tape)"
+start q0
+input "101+1110"
+tapes 5
+
+q0, [*, Z, Z, Z, Z] -> q0, [S, R, R, R, R]
+//copy input1 to tape 1
+q0, [0, #, #, #, #] -> q0, [0, #, #, #], [R, R, S, R, S] 
+q0, [1, #, #, #, #] -> q0, [1, #, #, #], [R, R, S, R, S]
+q0, [+, #, #, #, #] -> q1, [R, S, S, S, S]
+
+//copy input2 to tape 2
+q1, [0, #, #, #, #] -> q1, [#, 0, #, #], [R, S, R, R, S] 
+q1, [1, #, #, #, #] -> q1, [#, 1, #, #], [R, S, R, R, S]
+q1, [#, #, #, #, #] -> q2, [S, L, L, L, S]
+
+//add from the right most digit
+q2, [#, 0, 0, #, #] -> q2, [0, 0, 0, #], [S, L, L, L, S]
+q2, [#, 0, 1, #, #] -> q2, [0, 1, 1, #], [S, L, L, L, S]
+q2, [#, 1, 0, #, #] -> q2, [1, 0, 1, #], [S, L, L, L, S]
+q2, [#, 1, 1, #, #] -> q3, [1, 1, 0, #], [S, L, L, L, S] //carry 1
+q2, [#, Z, 0, #, #] -> q2, [Z, 0, 0, #], [S, S, L, L, S]
+q2, [#, Z, 1, #, #] -> q2, [Z, 1, 1, #], [S, S, L, L, S]
+q2, [#, 0, Z, #, #] -> q2, [0, Z, 0, #], [S, L, S, L, S]
+q2, [#, 1, Z, #, #] -> q2, [1, Z, 1, #], [S, L, S, L, S]
+q2, [#, Z, Z, #, #] -> q4, [S, S, S, R, S]
+
+//with carry 1
+q3, [#, 0, 0, #, #] -> q2, [0, 0, 1, #], [S, L, L, L, S]
+q3, [#, 0, 1, #, #] -> q3, [0, 1, 0, #], [S, L, L, L, S]
+q3, [#, 1, 0, #, #] -> q3, [1, 0, 0, #], [S, L, L, L, S]
+q3, [#, 1, 1, #, #] -> q3, [1, 1, 1, #], [S, L, L, L, S] 
+q3, [#, Z, 0, #, #] -> q2, [Z, 0, 1, #], [S, S, L, L, S]
+q3, [#, Z, 1, #, #] -> q3, [Z, 1, 0, #], [S, S, L, L, S]
+q3, [#, 0, Z, #, #] -> q2, [0, Z, 1, #], [S, L, S, L, S]
+q3, [#, 1, Z, #, #] -> q3, [1, Z, 0, #], [S, L, S, L, S]
+q3, [#, Z, Z, #, #] -> q4, [Z, Z, 1, #], [S, S, S, S, S]
+
+//copy tape 3 to tape 4 (output)
+q4, [#, Z, Z, 0, #] -> q4, [Z, Z, 0, 0], [S, S, S, R, R]
+q4, [#, Z, Z, 1, #] -> q4, [Z, Z, 1, 1], [S, S, S, R, R]
+</script>
+
+
+<script type="text/x-turing" data-label="Unitary Multiply">
+name "Unitary Multiply (2 tapes)"
+start q0
+input "111×1111"
+tapes 3
+
+q0, [*, Z, Z] -> q0, [S, R, R]
+//copy input1 to tape 1
+q0, [1, #, #] -> q0, [1,#], [R, R, S] 
+q0, [×, #, #] -> q1, [R, L, S]
+
+//for each 1 in input2, copy tape 1 to tape 2
+q1, [*, 1, #] -> q1, [S, L, S]
+q1, [1, Z, #] -> q2, [S, R, S]
+
+q2, [1, 1, #] -> q2, [1, 1], [S, R, R]
+q2, [1, #, #] -> q1, [R, L, S]
+</script>
+
+
+<script type="text/x-turing" data-label="Enumerator">
+// L = { 0^n1^n | n > 0 }
+name "Enumerator"
+start q0
+input ""
+tapes 3
+
+q0, [#, Z, Z] -> q0, [S, R, R] 
+q0, [#, #, #] -> q1, [#, 1, #], [S, S, S] 
+
+q1, [#, 1, #] -> q1, [#, 1, 0], [S, L, R]
+q1, [#, Z, #] -> q2, [S, R, S]
+
+q2, [#, 1, #] -> q2, [#, 1, 1], [S, R, R]
+q2, [#, #, #] -> q1, [#, 1, #], [S, S, R]
 </script>
 
 
