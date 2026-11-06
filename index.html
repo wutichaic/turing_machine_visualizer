@@ -403,6 +403,20 @@ q3, # -> q4, 1, S
 </script>
 
 
+<script type="text/x-turing" data-label="Binary increment">
+name "Binary increment"
+tape infinite
+start q0
+input "1011"
+
+q0, {0, 1} -> q0, R
+q0, # -> q1, L
+
+q1, 1 -> q1, 0, L
+q1, {0, #} -> q2, 1, S
+</script>
+
+
 <script type="text/x-turing" data-label="Binary Add (3 tapes)">
 name "Binary Add (3 tapes)"
 start q0
@@ -546,6 +560,26 @@ q2, [#, 1, #] -> q2, [#, 1, 1], [S, R, R]
 q2, [#, #, #] -> q1, [#, 1, #], [S, S, R]
 </script>
 
+
+<script type="text/x-turing" data-label="For Quiz 17: 0^n1^n or empty (two-way)">
+// L = { 0^n 1^n | n >= 0 }
+name "0^n1^n or empty (two-way)"
+start q0
+accept q3
+input "000111"
+tape infinite
+
+q0, y -> q0, R      
+q0, 0 -> q1, x, R   
+q0, # -> q3, R          
+
+q1, {0, y} -> q1, R
+q1, 1 -> q2, y, L       
+
+q2, {0, y} -> q2, L
+q2, x -> q0, R
+
+</script>
 
 <style>
 :root{
