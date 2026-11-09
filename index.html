@@ -561,6 +561,27 @@ q2, [#, #, #] -> q1, [#, 1, #], [S, S, R]
 </script>
 
 
+<script type="text/x-turing" data-label="For Quiz17">
+name “Quiz17” 
+start q0
+accept q3
+input "000111"
+tape infinite
+
+q0, y -> q0, R      
+q0, 0 -> q1, x, R   
+q0, # -> q3, R          
+
+q1, {0, y} -> q1, R
+q1, 1 -> q2, y, L       
+
+q2, {0, y} -> q2, L
+q2, x -> q0, R
+
+</script>
+
+
+
 <script type="text/x-turing" data-label="For Quiz18">
 name "Quiz18"
 start q0
