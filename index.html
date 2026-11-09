@@ -561,24 +561,22 @@ q2, [#, #, #] -> q1, [#, 1, #], [S, S, R]
 </script>
 
 
-<script type="text/x-turing" data-label="For Quiz 17: 0^n1^n or empty (two-way)">
-// L = { 0^n 1^n | n >= 0 }
-name "0^n1^n or empty (two-way)"
+<script type="text/x-turing" data-label="For Quiz18">
+name "Quiz18"
 start q0
-accept q3
-input "000111"
-tape infinite
+accept q4
 
-q0, y -> q0, R      
-q0, 0 -> q1, x, R   
-q0, # -> q3, R          
+q0, Z -> q1, R       
+q0, {0,1,x} -> q0, L     
 
-q1, {0, y} -> q1, R
-q1, 1 -> q2, y, L       
+q1, x -> q1, R            
+q1, 0 -> q2, x, R       
+q1, 1 -> q1, L        
+q1, # -> q4, S     
+q1, Z -> q1, R         
 
-q2, {0, y} -> q2, L
-q2, x -> q0, R
-
+q2, {0,x} -> q2, R       
+q2, 1 -> q0, x, L
 </script>
 
 <style>
