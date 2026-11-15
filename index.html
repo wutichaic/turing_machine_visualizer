@@ -600,6 +600,71 @@ q2, {0,x} -> q2, R
 q2, 1 -> q0, x, L
 </script>
 
+
+<script type="text/x-turing" data-label="0^n1^n efficient">
+// L = { 0^n 1^n | n > 0 }
+name "0^n1^n efficient"
+start q0
+accept q6
+input "000111"
+
+//step 1
+q0, Z -> q0, Z, R      // step off the left-end marker
+q0, 0 -> q0, R        
+q0, 1 -> q1, R         
+
+q1, 1 -> q1, R
+q1, # -> q000, L
+
+//step 2
+q000, 0 -> q110, L
+q000, 1 -> q101, L
+q000, x -> q000, L
+q000, Z -> q6, S
+
+q001, 0 -> q111, L
+q001, 1 -> q101, L
+q001, x -> q001, L
+
+q010, 0 -> q110, L
+q010, 1 -> q111, L
+q010, x -> q010, L
+
+q011, {0, 1} -> q111, L
+q011, x -> q011, L
+q011, Z -> q2, R
+
+q101, 0 -> q011, L
+q101, 1 -> q001, L
+q101, x -> q101, L
+
+q110, 0 -> q010, L
+q110, 1 -> q011, L
+q110, x -> q110, L
+
+q111, {0, 1} -> q011, L
+q111, x -> q111, L
+
+//step 3
+q2, 0 -> q3, x, R
+q2, 1 -> q5, x, R
+q2, x -> q2, R
+
+q3, 0 -> q2, R
+q3, 1 -> q5, x, R
+q3, x -> q3, R
+
+q4, 1 -> q5, x, R
+q4, x -> q4, R
+q4, # -> q000, L
+
+q5, 1 -> q4, R
+q5, x -> q5, R
+q5, # -> q000, L
+
+// any missing transition rejects
+</script>
+
 <style>
 :root{
   --bg:#E9EDF1; --panel:#FFFFFF; --panel-2:#F4F6F9; --canvas:#FAFBFC;
